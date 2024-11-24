@@ -43,9 +43,11 @@ const Widget: React.FC<BaseWidgetProps & { airQualityIndex?: number }> = ({
 const widgetAnimatable: IAnimatable<BaseWidgetProps & { airQualityIndex?: number }> = {
   id: "widget-1",
   component: Widget,
+  start: 1000,
+  duration: 1000,
   keyframes: [
-    { timestamp: 0, props: { x: 0, y: 0, scale: 1, colorR: 255, colorB: 0, colorG: 0 } },
-    { timestamp: 1000, props: { x: 100, y: 50, scale: 1.5, colorB: 255, colorR: 0, colorG: 0 } },
+    { timestamp: 1000, props: { x: 0, y: 0, scale: 1, colorR: 255, colorB: 0, colorG: 0 } },
+    { timestamp: 1500, props: { x: 100, y: 50, scale: 1.5, colorB: 255, colorR: 0, colorG: 0 } },
     { timestamp: 2000, props: { x: 200, y: 100, scale: 1, colorG: 255, colorB: 0, colorR: 0 } },
   ],
   props: {
@@ -66,21 +68,30 @@ const widgetAnimatable: IAnimatable<BaseWidgetProps & { airQualityIndex?: number
   onUpdate: async (animatable, generalTime) => {
     // Fetch data every 15 seconds
     if (generalTime % 15000 === 0) {
+      const username = "brumtech";
+      const password = "brumibrumi123";
+      const credentials = window.btoa(`${username}:${password}`); // Base64 encode the credentials
+    
+      const headers = new Headers({
+        Authorization: `Basic ${credentials}`,
+      });
+    
       try {
-        const response = await fetch("https://skopje.pulse.eco/rest/overall");
-        const data = response;
-
-        console.log(data)
-
-        // Example: Map the overall air quality index to props
-        const airQualityIndex = parseFloat(data.value?.pm10 ?? "50");
-        animatable.props.colorR = airQualityIndex > 100 ? 255 : (airQualityIndex / 100) * 255;
-        animatable.props.colorG = airQualityIndex <= 100 ? 255 : ((200 - airQualityIndex) / 100) * 255;
-        animatable.props.scale = Math.min(1.5, Math.max(0.5, airQualityIndex / 100));
-        animatable.props.airQualityIndex = airQualityIndex;
+        const response = await fetch("https://skopje.pulse.eco/rest/sensor", {
+          method: "GET",
+          headers: headers,
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        console.log(data); // Array of sensors
+        return data;
       } catch (error) {
-        console.error("Failed to fetch data:", error);
-      }
+        console.error("Failed to fetch sensors:", error);
+      }    
     }
   },
 
