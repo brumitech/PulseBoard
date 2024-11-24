@@ -66,21 +66,30 @@ const widgetAnimatable: IAnimatable<BaseWidgetProps & { airQualityIndex?: number
   onUpdate: async (animatable, generalTime) => {
     // Fetch data every 15 seconds
     if (generalTime % 15000 === 0) {
+      const username = "brumtech";
+      const password = "brumibrumi123";
+      const credentials = window.btoa(`${username}:${password}`); // Base64 encode the credentials
+    
+      const headers = new Headers({
+        Authorization: `Basic ${credentials}`,
+      });
+    
       try {
-        const response = await fetch("https://skopje.pulse.eco/rest/overall");
-        const data = response;
-
-        console.log(data)
-
-        // Example: Map the overall air quality index to props
-        const airQualityIndex = parseFloat(data.value?.pm10 ?? "50");
-        animatable.props.colorR = airQualityIndex > 100 ? 255 : (airQualityIndex / 100) * 255;
-        animatable.props.colorG = airQualityIndex <= 100 ? 255 : ((200 - airQualityIndex) / 100) * 255;
-        animatable.props.scale = Math.min(1.5, Math.max(0.5, airQualityIndex / 100));
-        animatable.props.airQualityIndex = airQualityIndex;
+        const response = await fetch("https://skopje.pulse.eco/rest/sensor", {
+          method: "GET",
+          headers: headers,
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        console.log(data); // Array of sensors
+        return data;
       } catch (error) {
-        console.error("Failed to fetch data:", error);
-      }
+        console.error("Failed to fetch sensors:", error);
+      }    
     }
   },
 
