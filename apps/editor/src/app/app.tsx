@@ -43,9 +43,11 @@ const Widget: React.FC<BaseWidgetProps & { airQualityIndex?: number }> = ({
 const widgetAnimatable: IAnimatable<BaseWidgetProps & { airQualityIndex?: number }> = {
   id: "widget-1",
   component: Widget,
+  start: 1000,
+  duration: 1000,
   keyframes: [
-    { timestamp: 0, props: { x: 0, y: 0, scale: 1, colorR: 255, colorB: 0, colorG: 0 } },
-    { timestamp: 1000, props: { x: 100, y: 50, scale: 1.5, colorB: 255, colorR: 0, colorG: 0 } },
+    { timestamp: 1000, props: { x: 0, y: 0, scale: 1, colorR: 255, colorB: 0, colorG: 0 } },
+    { timestamp: 1500, props: { x: 100, y: 50, scale: 1.5, colorB: 255, colorR: 0, colorG: 0 } },
     { timestamp: 2000, props: { x: 200, y: 100, scale: 1, colorG: 255, colorB: 0, colorR: 0 } },
   ],
   props: {

@@ -23,6 +23,8 @@ export interface IAnimation {
 export interface IAnimatable<TProps extends object> {
     id: string;
     component: ComponentType<TProps>;
+    start: number;
+    duration: number;
     keyframes: Keyframe<TProps>[];
     props: TProps;
     containerStyle?: React.CSSProperties;
