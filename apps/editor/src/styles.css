@@ -2,3 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 /* You can add global styles to this file, and also import other style files */
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #EDF2F7;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E0;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #A0AEC0;
+  }
+  
+  /* For Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E0 #EDF2F7;
+  }
