@@ -2,6 +2,7 @@
   "name": "@pulseboard/shared",
   "version": "0.0.1",
   "dependencies": {
+    "@pulseboard/shared": "file:",
     "tslib": "^2.3.0"
   },
   "type": "commonjs",
