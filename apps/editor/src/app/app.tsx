@@ -1,9 +1,9 @@
-import NxWelcome from './nx-welcome';
+import { TimelineEditor } from "./editor";
 
 export function App() {
   return (
     <div>
-      <NxWelcome title="editor" />
+      <TimelineEditor />
     </div>
   );
 }
