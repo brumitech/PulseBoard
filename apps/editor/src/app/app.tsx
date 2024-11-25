@@ -1,11 +1,12 @@
-// apps/editor/src/app/app.tsx
-import { useEffect } from 'react';
-import { Play, Pause, RotateCcw, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Play, Pause, RotateCcw, Plus, X } from 'lucide-react';
 import { Timeline } from '../components/Timeline';
 import { Properties } from '../components/Properties';
-import { useAnimation } from '@pulseboard/shared';
+import { useAnimation, IAnimatable, Prop } from '@pulseboard/shared';
+import { widgetRegistry } from '@pulseboard/widgets';
 
 export function App() {
+  const [isWidgetPanelOpen, setIsWidgetPanelOpen] = useState(false);
   const {
     currentTime,
     isPlaying,
@@ -22,7 +23,8 @@ export function App() {
     selectKeyframe,
     removeAnimatable,
     updateKeyframe,
-  } = useAnimation(6000); // 6 seconds default duration
+    addAnimatable
+  } = useAnimation(6000);
 
   useEffect(() => {
     initAnimation();
@@ -38,6 +40,42 @@ export function App() {
     updateKeyframe(selectedAnimatableId, parseInt(selectedKeyframeId), {
       timestamp: time
     });
+  };
+
+  const handleAddWidget = (widgetDef: typeof widgetRegistry[0]) => {
+    const animatable: IAnimatable<any, any> = {
+      id: `${widgetDef.id}-${Date.now()}`,
+      component: widgetDef.component,
+      start: 0,
+      componentProps: {},
+      duration: widgetDef.defaultDuration,
+      props: Object.entries(widgetDef.defaultProps).reduce((acc, [key, value]) => {
+        if (typeof value === 'number') {
+          acc[key] = Prop.number(value, key, 'transform');
+        } else if (typeof value === 'string') {
+          if (value.startsWith('rgb')) {
+            acc[key] = Prop.color(value, key, 'appearance');
+          } else {
+            acc[key] = Prop.string(value, key);
+          }
+        } else {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>),
+      keyframes: [
+        {
+          timestamp: 0,
+          props: Object.entries(widgetDef.defaultProps).reduce((acc, [key, value]) => {
+            acc[key] = value instanceof Prop ? value.value : value;
+            return acc;
+          }, {} as Record<string, any>)
+        }
+      ]
+    };
+
+    addAnimatable(animatable);
+    setIsWidgetPanelOpen(false);
   };
 
   const selectedAnimatable = animatables.find(a => a.id === selectedAnimatableId);
@@ -65,7 +103,10 @@ export function App() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 flex items-center gap-2">
+          <button 
+            className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 flex items-center gap-2"
+            onClick={() => setIsWidgetPanelOpen(true)}
+          >
             <Plus size={16} />
             Add Widget
           </button>
@@ -102,6 +143,40 @@ export function App() {
           onKeyframeUpdate={handleKeyframeUpdate}
           onKeyframeTimeChange={handleKeyframeTimeChange}
         />
+
+        {/* Widget Panel Modal */}
+        {isWidgetPanelOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg w-[600px] max-h-[80vh] flex flex-col">
+              <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 className="font-semibold text-lg">Add Widget</h2>
+                <button 
+                  className="p-2 hover:bg-gray-700 rounded-full"
+                  onClick={() => setIsWidgetPanelOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-4">
+                  {widgetRegistry.map(widget => (
+                    <div
+                      key={widget.id}
+                      className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 cursor-pointer"
+                      onClick={() => handleAddWidget(widget)}
+                    >
+                      <h3 className="font-medium mb-2">{widget.name}</h3>
+                      <p className="text-sm text-gray-400">{widget.description}</p>
+                      <span className="inline-block mt-2 text-xs bg-gray-800 px-2 py-1 rounded">
+                        {widget.category}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

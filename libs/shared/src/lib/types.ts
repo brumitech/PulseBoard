@@ -1,4 +1,5 @@
 import { ComponentType } from 'react';
+import { Prop } from './prop';
 
 export interface IScreen {
     id: string;
@@ -36,4 +37,20 @@ export interface IAnimatable<TProps extends object, CProps extends object> {
 export interface Keyframe<TProps extends object> {
     timestamp: number;
     props: Partial<TProps>;
+}
+
+export interface WidgetDefinition<T = any> {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    defaultDuration: number;
+    component: ComponentType<T>;
+    defaultProps: {
+        x: Prop<number>;
+        y: Prop<number>;
+        scale: Prop<number>;
+        color: Prop<string>;
+        [key: string]: any;
+    };
 }
