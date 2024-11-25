@@ -1,6 +1,6 @@
 // libs/shared/src/lib/hooks/useAnimation.ts
 import { useState, useRef, useCallback } from 'react';
-import { IAnimation, IAnimatable, Keyframe } from '../types';
+import { IAnimatable, Keyframe } from '../types';
 import { Animation } from '../animation';
 import { Prop } from '../prop';
 interface UseAnimationState {
