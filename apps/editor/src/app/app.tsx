@@ -1,124 +1,130 @@
-import { BaseWidgetProps, IAnimatable, Animation, lerp } from '@pulseboard/shared'
+import { IAnimatable, Animation, Prop, BaseWidgetProps } from '@pulseboard/shared';
 import { useEffect, useRef, useState } from 'react';
 
-const Widget: React.FC<BaseWidgetProps & { airQualityIndex?: number }> = ({ 
-  x, 
-  y, 
-  scale, 
-  colorR, 
-  colorB, 
-  colorG, 
-  airQualityIndex 
-}) => {
+// Widget component
+const Widget: React.FC<BaseWidgetProps> = ({ x, y, scale, color }) => {
   return (
     <div
       style={{
-        position: "absolute",
-        left: `${x}px`,
-        top: `${y}px`,
-        transform: `scale(${scale})`,
-        backgroundColor: `rgba(${colorR},${colorG},${colorB},1)`,
-        width: "80px",
-        height: "80px",
-        borderRadius: "10px",
-        boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        color: "white",
-        fontSize: "12px",
-        fontFamily: "Arial, sans-serif",
-        textAlign: "center",
+        position: 'absolute',
+        left: `${x.value}px`,
+        top: `${y.value}px`,
+        transform: `scale(${scale.value})`,
+        backgroundColor: color.value,
+        width: '80px',
+        height: '80px',
+        borderRadius: '10px',
+        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'black',
+        fontSize: '12px',
+        fontFamily: 'Arial, sans-serif',
+        textAlign: 'center',
       }}
     >
       <div>
         <strong>AQI</strong>
       </div>
-      <div>{airQualityIndex ?? "N/A"}</div>
+      <div>N/A</div>
     </div>
   );
 };
 
-const widgetAnimatable: IAnimatable<BaseWidgetProps & { airQualityIndex?: number }> = {
-  id: "widget-1",
+// Animatable definition
+const widgetAnimatable: IAnimatable<BaseWidgetProps> = {
+  id: 'widget-1',
   component: Widget,
   start: 1000,
-  duration: 1000,
+  duration: 2000,
   keyframes: [
-    { timestamp: 1000, props: { x: 0, y: 0, scale: 1, colorR: 255, colorB: 0, colorG: 0 } },
-    { timestamp: 1500, props: { x: 100, y: 50, scale: 1.5, colorB: 255, colorR: 0, colorG: 0 } },
-    { timestamp: 2000, props: { x: 200, y: 100, scale: 1, colorG: 255, colorB: 0, colorR: 0 } },
+    {
+      timestamp: 0,
+      props: {
+        x: 0,
+        y: 0,
+        scale: 1,
+        color: 'rgb(255,0,0)'
+      },
+    },
+    {
+      timestamp: 1500,
+      props: {
+        x: 100,
+        y: 100,
+        scale: 2,
+        color: 'rgb(0,255,0)'
+      },
+    },
+    {
+      timestamp: 3000,
+      props: {
+        x: 200,
+        y: 200,
+        scale: 0.2,
+        color: 'rgb(0,0,255)'
+      },
+    },
   ],
   props: {
-    colorR: 0,
-    colorG: 0,
-    colorB: 0,
-    scale: 1,
-    x: 0,
-    y: 0,
-    airQualityIndex: undefined,
+    x: Prop.number(0, 'X', 'pos'),
+    y: Prop.number(0, 'Y', 'pos'),
+    scale: Prop.number(1, 'Scale'),
+    color: Prop.color('rgb(255,0,0)', 'Background Color')
   },
 
-  // Lifecycle handlers
-  onStart: (animatable, generalTime) => {
-    //console.log(`Animation started for ${animatable.id} at ${generalTime}ms`);
+  // Lifecycle hooks
+  onStart: (animatable, t) => {
+    console.log(`Animation started for ${animatable.id} at ${t}ms`);
   },
 
-  onUpdate: async (animatable, generalTime) => {
-    // Fetch data every 15 seconds
-    if (generalTime % 15000 === 0) {
-      const username = "brumtech";
-      const password = "brumibrumi123";
-      const credentials = window.btoa(`${username}:${password}`); // Base64 encode the credentials
-    
+  onUpdate: async (animatable, t) => {
+    if (t % 15000 === 0) {
+      const username = 'brumtech';
+      const password = 'brumibrumi123';
+      const credentials = window.btoa(`${username}:${password}`);
+
       const headers = new Headers({
         Authorization: `Basic ${credentials}`,
       });
-    
+
       try {
-        const response = await fetch("https://skopje.pulse.eco/rest/sensor", {
-          method: "GET",
-          headers: headers,
+        const response = await fetch('https://skopje.pulse.eco/rest/sensor', {
+          method: 'GET',
+          headers,
         });
-    
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-    
+
         const data = await response.json();
-        console.log(data); // Array of sensors
-        return data;
+        console.log('Sensors fetched:', data);
       } catch (error) {
-        console.error("Failed to fetch sensors:", error);
-      }    
+        console.error('Failed to fetch sensors:', error);
+      }
     }
   },
 
-  onEnd: (animatable, generalTime) => {
-    //console.log(`Animation ended for ${animatable.id} at ${generalTime}ms`);
+  onEnd: (animatable, t) => {
+    console.log(`Animation ended for ${animatable.id} at ${t}ms`);
   },
 };
 
 export const App: React.FC = () => {
   const animationRef = useRef<Animation | null>(null);
-  const animatablesRef = useRef<IAnimatable<any>[]>([widgetAnimatable]);
-  const [, forceUpdate] = useState(0); // Dummy state to trigger updates
+  const animatablesRef = useRef<IAnimatable<BaseWidgetProps>[]>([widgetAnimatable]);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    // Initialize the animation
-    animationRef.current = new Animation(
-      "example",
-      3000,
-      animatablesRef.current,
-      lerp
-    );
+    animationRef.current = new Animation('example', 3000, animatablesRef.current);
 
-    // Override the `setT` function in the Animation class
     const originalSetT = animationRef.current.setT.bind(animationRef.current);
     animationRef.current.setT = (t: number) => {
-      originalSetT(t); // Perform the original logic
-      forceUpdate((prev) => prev + 1); // Trigger a React re-render
+      originalSetT(t);
+      forceUpdate((prev) => prev + 1);
     };
 
     animationRef.current.play();
@@ -132,7 +138,23 @@ export const App: React.FC = () => {
     <div>
       {animatablesRef.current.map((animatable) => {
         const Component = animatable.component;
-        return <Component key={animatable.id} {...animatable.props} />;
+        const t = animationRef.current?.getT() || 0;
+        const isVisible = t >= animatable.start && t <= animatable.start + animatable.duration;
+
+        // Convert props object for component props
+        const componentProps = animatable.props;
+
+        return (
+          <div
+            key={animatable.id}
+            style={{
+              visibility: isVisible ? 'visible' : 'hidden',
+              position: 'absolute',
+            }}
+          >
+            <Component {...componentProps} />
+          </div>
+        );
       })}
     </div>
   );

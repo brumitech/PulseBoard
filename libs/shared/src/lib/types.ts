@@ -1,6 +1,5 @@
-import { ComponentType } from 'react'
+import { ComponentType } from 'react';
 
-// db
 export interface IScreen {
     id: string;
     animationId: string;
@@ -8,7 +7,6 @@ export interface IScreen {
     longitude: number;
 }
 
-// db
 export interface IAnimation {
     id: string;
     duration: number;
@@ -19,40 +17,21 @@ export interface IAnimation {
     setT: (t: number) => void;
 }
 
-// db
 export interface IAnimatable<TProps extends object> {
     id: string;
     component: ComponentType<TProps>;
     start: number;
     duration: number;
-    keyframes: Keyframe<TProps>[];
+    keyframes: Keyframe<any>[];
     props: TProps;
     containerStyle?: React.CSSProperties;
 
-    // Lifecycle hooks
-    onStart?: (animatable: IAnimatable<TProps>, t: number) => void; // Called when animation starts
-    onUpdate?: (animatable: IAnimatable<TProps>, t: number) => void; // Called during updates
-    onEnd?: (animatable: IAnimatable<TProps>, t: number) => void; // Called when animation ends
+    onStart?: (animatable: IAnimatable<TProps>, t: number) => void;
+    onUpdate?: (animatable: IAnimatable<TProps>, t: number) => void;
+    onEnd?: (animatable: IAnimatable<TProps>, t: number) => void;
 }
 
-export interface BaseWidgetProps {
-    x: number;
-    y: number;
-    scale: number;
-    colorR: number;
-    colorG: number;
-    colorB: number;
-}
-
-// db
-export interface IWidget extends IAnimatable<BaseWidgetProps> {
-
-}
-
-// db
 export interface Keyframe<TProps extends object> {
-    timestamp: number; // ms
-    props: TProps;
+    timestamp: number;
+    props: Partial<TProps>;
 }
-
-export type InterpolationFn = (a: number, b: number, t: number) => number;
