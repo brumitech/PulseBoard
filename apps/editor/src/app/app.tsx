@@ -2,7 +2,7 @@ import { IAnimatable, Animation, Prop, BaseWidgetProps } from '@pulseboard/share
 import { useEffect, useRef, useState } from 'react';
 
 // Widget component
-const Widget: React.FC<BaseWidgetProps> = ({ x, y, scale, color }) => {
+const Widget: React.FC<BaseWidgetProps & { aqi: number }> = ({ x, y, scale, color, aqi }) => {
   return (
     <div
       style={{
@@ -26,7 +26,7 @@ const Widget: React.FC<BaseWidgetProps> = ({ x, y, scale, color }) => {
       }}
     >
       <div>
-        <strong>AQI</strong>
+        <strong>{aqi}</strong>
       </div>
       <div>N/A</div>
     </div>
@@ -34,9 +34,10 @@ const Widget: React.FC<BaseWidgetProps> = ({ x, y, scale, color }) => {
 };
 
 // Animatable definition
-const widgetAnimatable: IAnimatable<BaseWidgetProps> = {
+const widgetAnimatable: IAnimatable<BaseWidgetProps, { aqi: number }> = {
   id: 'widget-1',
   component: Widget,
+  componentProps: { aqi: 0 },
   start: 1000,
   duration: 2000,
   keyframes: [
@@ -97,6 +98,8 @@ const widgetAnimatable: IAnimatable<BaseWidgetProps> = {
 
         const data = await response.json();
         console.log('Sensors fetched:', data);
+        // modify aqi here
+        animatable.componentProps.aqi = data[0].type;
       } catch (error) {
         console.error('Failed to fetch sensors:', error);
       }
@@ -122,7 +125,7 @@ const widgetAnimatable: IAnimatable<BaseWidgetProps> = {
 
 export const App: React.FC = () => {
   const animationRef = useRef<Animation | null>(null);
-  const animatablesRef = useRef<IAnimatable<BaseWidgetProps>[]>([widgetAnimatable]);
+  const animatablesRef = useRef<IAnimatable<BaseWidgetProps, { aqi: number }>[]>([widgetAnimatable]);
   const [, forceUpdate] = useState(0);
 
   useEffect(() => {
@@ -149,7 +152,10 @@ export const App: React.FC = () => {
         const isVisible = t >= animatable.start && t <= animatable.start + animatable.duration;
 
         // Convert props object for component props
-        const componentProps = animatable.props;
+        const animProps = animatable.props;
+        const compProps = animatable.componentProps;
+
+        const finalProps = {...animProps, ...compProps}
 
         return (
           <div
@@ -159,7 +165,7 @@ export const App: React.FC = () => {
               position: 'absolute',
             }}
           >
-            <Component {...componentProps} />
+            <Component {...finalProps} />
           </div>
         );
       })}

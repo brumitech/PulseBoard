@@ -4,14 +4,14 @@ import { IAnimation, IAnimatable, Keyframe } from './types';
 export class Animation implements IAnimation {
   id: string;
   duration: number;
-  animatables: IAnimatable<any>[];
+  animatables: IAnimatable<any, any>[];
   private running = false;
   private startTime: number | null = null;
   private rafId: number | null = null;
   private generalTime: number = 0; // Elapsed time since animation start
   private initialProps: Record<string, any>[] = []; // Stores initial props for each animatable
 
-  constructor(id: string, duration: number, animatables: IAnimatable<any>[]) {
+  constructor(id: string, duration: number, animatables: IAnimatable<any, any>[]) {
     this.id = id;
     this.duration = duration;
     this.animatables = animatables;
