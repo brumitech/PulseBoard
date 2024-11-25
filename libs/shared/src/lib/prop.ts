@@ -18,7 +18,7 @@ export class Prop<T> {
         return new Prop<string>(value, 'string', text, groupTag);
     }
 
-    static color(value: string, text: string, groupTag?: string): Prop<color> {
+    static color(value: string, text: string, groupTag?: string): Prop<string> {
         return new Prop<string>(value, 'color', text, groupTag);
     }
 }
