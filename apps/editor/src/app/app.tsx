@@ -6,7 +6,7 @@ import { useAnimation, IAnimatable, Prop } from '@pulseboard/shared';
 import { widgetRegistry } from '@pulseboard/widgets';
 
 export function App() {
-  const [isWidgetPanelOpen, setIsWidgetPanelOpen] = useState(false);
+  const [isWidgetPanelOpen, setIsWidgetPanelOpen] = useState(true);
   const {
     currentTime,
     isPlaying,
