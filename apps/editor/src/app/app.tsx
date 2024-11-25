@@ -1,141 +1,110 @@
-import { BaseWidgetProps, IAnimatable, Animation, lerp } from '@pulseboard/shared'
-import { useEffect, useRef, useState } from 'react';
+// apps/editor/src/app/app.tsx
+import { useEffect } from 'react';
+import { Play, Pause, RotateCcw, Plus } from 'lucide-react';
+import { Timeline } from '../components/Timeline';
+import { Properties } from '../components/Properties';
+import { useAnimation } from '@pulseboard/shared';
 
-const Widget: React.FC<BaseWidgetProps & { airQualityIndex?: number }> = ({ 
-  x, 
-  y, 
-  scale, 
-  colorR, 
-  colorB, 
-  colorG, 
-  airQualityIndex 
-}) => {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: `${x}px`,
-        top: `${y}px`,
-        transform: `scale(${scale})`,
-        backgroundColor: `rgba(${colorR},${colorG},${colorB},1)`,
-        width: "80px",
-        height: "80px",
-        borderRadius: "10px",
-        boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        color: "white",
-        fontSize: "12px",
-        fontFamily: "Arial, sans-serif",
-        textAlign: "center",
-      }}
-    >
-      <div>
-        <strong>AQI</strong>
-      </div>
-      <div>{airQualityIndex ?? "N/A"}</div>
-    </div>
-  );
-};
-
-const widgetAnimatable: IAnimatable<BaseWidgetProps & { airQualityIndex?: number }> = {
-  id: "widget-1",
-  component: Widget,
-  start: 1000,
-  duration: 1000,
-  keyframes: [
-    { timestamp: 1000, props: { x: 0, y: 0, scale: 1, colorR: 255, colorB: 0, colorG: 0 } },
-    { timestamp: 1500, props: { x: 100, y: 50, scale: 1.5, colorB: 255, colorR: 0, colorG: 0 } },
-    { timestamp: 2000, props: { x: 200, y: 100, scale: 1, colorG: 255, colorB: 0, colorR: 0 } },
-  ],
-  props: {
-    colorR: 0,
-    colorG: 0,
-    colorB: 0,
-    scale: 1,
-    x: 0,
-    y: 0,
-    airQualityIndex: undefined,
-  },
-
-  // Lifecycle handlers
-  onStart: (animatable, generalTime) => {
-    //console.log(`Animation started for ${animatable.id} at ${generalTime}ms`);
-  },
-
-  onUpdate: async (animatable, generalTime) => {
-    // Fetch data every 15 seconds
-    if (generalTime % 15000 === 0) {
-      const username = "brumtech";
-      const password = "brumibrumi123";
-      const credentials = window.btoa(`${username}:${password}`); // Base64 encode the credentials
-    
-      const headers = new Headers({
-        Authorization: `Basic ${credentials}`,
-      });
-    
-      try {
-        const response = await fetch("https://skopje.pulse.eco/rest/sensor", {
-          method: "GET",
-          headers: headers,
-        });
-    
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    
-        const data = await response.json();
-        console.log(data); // Array of sensors
-        return data;
-      } catch (error) {
-        console.error("Failed to fetch sensors:", error);
-      }    
-    }
-  },
-
-  onEnd: (animatable, generalTime) => {
-    //console.log(`Animation ended for ${animatable.id} at ${generalTime}ms`);
-  },
-};
-
-export const App: React.FC = () => {
-  const animationRef = useRef<Animation | null>(null);
-  const animatablesRef = useRef<IAnimatable<any>[]>([widgetAnimatable]);
-  const [, forceUpdate] = useState(0); // Dummy state to trigger updates
+export function App() {
+  const {
+    currentTime,
+    isPlaying,
+    duration,
+    animatables,
+    selectedAnimatableId,
+    selectedKeyframeId,
+    initAnimation,
+    play,
+    pause,
+    stop,
+    setTime,
+    selectAnimatable,
+    selectKeyframe,
+    removeAnimatable,
+    updateKeyframe,
+  } = useAnimation(6000); // 6 seconds default duration
 
   useEffect(() => {
-    // Initialize the animation
-    animationRef.current = new Animation(
-      "example",
-      3000,
-      animatablesRef.current,
-      lerp
-    );
+    initAnimation();
+  }, [initAnimation]);
 
-    // Override the `setT` function in the Animation class
-    const originalSetT = animationRef.current.setT.bind(animationRef.current);
-    animationRef.current.setT = (t: number) => {
-      originalSetT(t); // Perform the original logic
-      forceUpdate((prev) => prev + 1); // Trigger a React re-render
-    };
+  const handleKeyframeUpdate = (updates: Partial<any>) => {
+    if (!selectedAnimatableId || selectedKeyframeId === null) return;
+    updateKeyframe(selectedAnimatableId, parseInt(selectedKeyframeId), updates);
+  };
 
-    animationRef.current.play();
+  const handleKeyframeTimeChange = (time: number) => {
+    if (!selectedAnimatableId || selectedKeyframeId === null) return;
+    updateKeyframe(selectedAnimatableId, parseInt(selectedKeyframeId), {
+      timestamp: time
+    });
+  };
 
-    return () => {
-      animationRef.current?.stop();
-    };
-  }, []);
+  const selectedAnimatable = animatables.find(a => a.id === selectedAnimatableId);
 
   return (
-    <div>
-      {animatablesRef.current.map((animatable) => {
-        const Component = animatable.component;
-        return <Component key={animatable.id} {...animatable.props} />;
-      })}
+    <div className="h-screen flex flex-col bg-gray-900 text-gray-100">
+      {/* Top Bar */}
+      <div className="h-14 bg-gray-800 flex items-center px-4 justify-between border-b border-gray-700">
+        <div className="flex items-center gap-4">
+          <button 
+            className="p-2 rounded hover:bg-gray-700"
+            onClick={isPlaying ? pause : play}
+          >
+            {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+          </button>
+          <button 
+            className="p-2 rounded hover:bg-gray-700"
+            onClick={stop}
+          >
+            <RotateCcw size={20} />
+          </button>
+          <div className="font-mono text-sm">
+            {(currentTime / 1000).toFixed(2)}s / {(duration / 1000).toFixed(2)}s
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 flex items-center gap-2">
+            <Plus size={16} />
+            Add Widget
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Preview */}
+        <div className="w-80 bg-gray-800 border-r border-gray-700 p-4">
+          <h2 className="font-semibold mb-4">Preview</h2>
+          {/* Add preview component here */}
+        </div>
+
+        {/* Center - Timeline */}
+        <div className="flex-1 overflow-auto">
+          <Timeline
+            duration={duration}
+            currentTime={currentTime}
+            animatables={animatables}
+            selectedAnimatableId={selectedAnimatableId}
+            selectedKeyframeId={selectedKeyframeId}
+            onTimeChange={setTime}
+            onKeyframeSelect={selectKeyframe}
+            onAnimatableSelect={selectAnimatable}
+            onAnimatableRemove={removeAnimatable}
+          />
+        </div>
+
+        {/* Right Sidebar - Properties */}
+        <Properties
+          selectedAnimatable={selectedAnimatable}
+          selectedKeyframeIndex={selectedKeyframeId !== null ? parseInt(selectedKeyframeId) : null}
+          onKeyframeUpdate={handleKeyframeUpdate}
+          onKeyframeTimeChange={handleKeyframeTimeChange}
+        />
+      </div>
     </div>
   );
-};
+}
 
 export default App;
