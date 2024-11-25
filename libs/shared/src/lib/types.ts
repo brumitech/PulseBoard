@@ -26,6 +26,7 @@ export interface IAnimatable<TProps extends object> {
     props: TProps;
     containerStyle?: React.CSSProperties;
 
+    once?: (animatable: IAnimatable<TProps>) => void;
     onStart?: (animatable: IAnimatable<TProps>, t: number) => void;
     onUpdate?: (animatable: IAnimatable<TProps>, t: number) => void;
     onEnd?: (animatable: IAnimatable<TProps>, t: number) => void;

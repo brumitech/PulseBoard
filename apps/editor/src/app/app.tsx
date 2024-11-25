@@ -75,13 +75,8 @@ const widgetAnimatable: IAnimatable<BaseWidgetProps> = {
     color: Prop.color('rgb(255,0,0)', 'Background Color')
   },
 
-  // Lifecycle hooks
-  onStart: (animatable, t) => {
-    console.log(`Animation started for ${animatable.id} at ${t}ms`);
-  },
-
-  onUpdate: async (animatable, t) => {
-    if (t % 15000 === 0) {
+  once: (animatable) => {
+    const fetchData = async () => {
       const username = 'brumtech';
       const password = 'brumibrumi123';
       const credentials = window.btoa(`${username}:${password}`);
@@ -105,7 +100,19 @@ const widgetAnimatable: IAnimatable<BaseWidgetProps> = {
       } catch (error) {
         console.error('Failed to fetch sensors:', error);
       }
-    }
+    };
+
+    console.log('once');
+
+    fetchData(); // Immediate fetch on start
+    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Fetch every 15 minutes
+  },
+
+  onStart: (animatable, t) => {
+    console.log(`Animation started for ${animatable.id} at ${t}ms`);
+  },
+
+  onUpdate: (animatable, t) => {
   },
 
   onEnd: (animatable, t) => {

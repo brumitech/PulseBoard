@@ -36,6 +36,8 @@ export class Animation implements IAnimation {
           }, {} as Record<string, any>),
         });
       }
+
+      animatable.once?.(animatable);
     });
   }
 
