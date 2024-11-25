@@ -1,3 +1,4 @@
+import { Easing } from "./easing";
 import { IAnimatable, IAnimation, InterpolationFn } from "./types";
 
 export class Animation implements IAnimation {
@@ -41,7 +42,7 @@ export class Animation implements IAnimation {
     }
 
     setT(t: number) {
-        this.generalTime = t; // Update general time
+        this.generalTime = t;
 
         this.animatables.forEach((animatable: IAnimatable<any>) => {
             const { keyframes, props, onStart, onUpdate, onEnd } = animatable;
@@ -50,9 +51,13 @@ export class Animation implements IAnimation {
             const nextKeyframe = keyframes.find((kf) => kf.timestamp > t);
 
             if (prevKeyframe && nextKeyframe) {
-                const progress =
-                    (t - prevKeyframe.timestamp) /
+                const progress = (t - prevKeyframe.timestamp) /
                     (nextKeyframe.timestamp - prevKeyframe.timestamp);
+
+                // Apply easing if specified
+                const easedProgress = prevKeyframe.easing 
+                    ? Easing[prevKeyframe.easing](progress)
+                    : progress;
 
                 const interpolatedProps = { ...props };
                 for (const key of new Set([...Object.keys(prevKeyframe.props), ...Object.keys(nextKeyframe.props)])) {
@@ -60,7 +65,7 @@ export class Animation implements IAnimation {
                     const nextValue = nextKeyframe.props[key] ?? prevValue;
 
                     if (prevValue !== undefined && nextValue !== undefined) {
-                        interpolatedProps[key] = this.interpolationFn(prevValue, nextValue, progress);
+                        interpolatedProps[key] = this.interpolationFn(prevValue, nextValue, easedProgress);
                     }
                 }
 
@@ -79,6 +84,7 @@ export class Animation implements IAnimation {
             }
         });
     }
+
 
     private loop() {
         if (!this.running) return;

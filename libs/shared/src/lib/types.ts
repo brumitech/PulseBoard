@@ -1,4 +1,6 @@
+// libs/shared/src/lib/types.ts
 import { ComponentType } from 'react'
+import { Easing } from './easing';
 
 // db
 export interface IScreen {
@@ -30,9 +32,9 @@ export interface IAnimatable<TProps extends object> {
     containerStyle?: React.CSSProperties;
 
     // Lifecycle hooks
-    onStart?: (animatable: IAnimatable<TProps>, t: number) => void; // Called when animation starts
-    onUpdate?: (animatable: IAnimatable<TProps>, t: number) => void; // Called during updates
-    onEnd?: (animatable: IAnimatable<TProps>, t: number) => void; // Called when animation ends
+    onStart?: (animatable: IAnimatable<TProps>, t: number) => void;
+    onUpdate?: (animatable: IAnimatable<TProps>, t: number) => void;
+    onEnd?: (animatable: IAnimatable<TProps>, t: number) => void;
 }
 
 export interface BaseWidgetProps {
@@ -46,13 +48,32 @@ export interface BaseWidgetProps {
 
 // db
 export interface IWidget extends IAnimatable<BaseWidgetProps> {
-
 }
 
 // db
 export interface Keyframe<TProps extends object> {
     timestamp: number; // ms
     props: TProps;
+    easing?: keyof typeof Easing;
 }
 
 export type InterpolationFn = (a: number, b: number, t: number) => number;
+
+// Updated TimelineKeyframe to extend from Keyframe with BaseWidgetProps
+export interface TimelineKeyframe extends Keyframe<BaseWidgetProps> {
+    timestamp: number;
+    props: BaseWidgetProps;
+    easing?: keyof typeof Easing;
+}
+
+export interface TimelineItem {
+    id: string;
+    widgetType: 'aqi' | 'temperature';
+    duration: number;
+    keyframes: TimelineKeyframe[];
+}
+
+export interface Timeline {
+    items: TimelineItem[];
+    duration: number;
+}
