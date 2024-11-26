@@ -1,125 +1,170 @@
-// apps/editor/src/components/Timeline.tsx
-import { useRef } from 'react';
-import { IAnimatable, Keyframe } from '@pulseboard/shared';
+import React, { useRef, useState, useCallback } from 'react';
+import { IAnimation, IAnimatable, Keyframe } from '@pulseboard/shared';
+import { Play, Pause, Square, RotateCw, CircleDot } from 'lucide-react';
+import Button from './common/Button';
 
-interface TimelineProps {
-  duration: number;
+interface TimelinePanelProps {
+  animation: IAnimation | null;
   currentTime: number;
-  animatables: IAnimatable<any, any>[];
+  isPlaying: boolean;
+  isRecording?: boolean;
+  onSeek: (time: number) => void;
+  onPlay: () => void;
+  onPause: () => void;
+  onStop: () => void;
+  onToggleRecording?: () => void;
   selectedAnimatableId: string | null;
-  selectedKeyframeId: string | null;
-  onTimeChange: (time: number) => void;
-  onKeyframeSelect: (animatableId: string, keyframeId: string) => void;
-  onAnimatableSelect: (id: string | null) => void;
-  onAnimatableRemove: (id: string) => void;
 }
 
-const PIXELS_PER_SECOND = 200;
-const TIMELINE_HEIGHT = 80;
-
-export function Timeline({
-  duration,
+const TimelinePanel: React.FC<TimelinePanelProps> = ({
+  animation,
   currentTime,
-  animatables,
+  isPlaying,
+  isRecording,
+  onSeek,
+  onPlay,
+  onPause,
+  onStop,
+  onToggleRecording,
   selectedAnimatableId,
-  selectedKeyframeId,
-  onTimeChange,
-  onKeyframeSelect,
-  onAnimatableSelect,
-  onAnimatableRemove,
-}: TimelineProps) {
+}) => {
   const timelineRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleTimelineClick = (e: React.MouseEvent) => {
+  const timeToPixels = useCallback((time: number) => {
+    return (time / (animation?.duration || 1)) * (timelineRef.current?.clientWidth || 0) * zoom;
+  }, [animation?.duration, zoom]);
+
+  const pixelsToTime = useCallback((pixels: number) => {
+    return (pixels / (timelineRef.current?.clientWidth || 1)) * (animation?.duration || 0) / zoom;
+  }, [animation?.duration, zoom]);
+
+  const handleTimelineClick = useCallback((e: React.MouseEvent) => {
     if (!timelineRef.current) return;
     
     const rect = timelineRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const clickedTime = (x / PIXELS_PER_SECOND) * 1000;
-    onTimeChange(Math.max(0, Math.min(clickedTime, duration)));
+    const newTime = pixelsToTime(x);
+    onSeek(Math.max(0, Math.min(newTime, animation?.duration || 0)));
+  }, [animation?.duration, pixelsToTime, onSeek]);
+
+  const handleKeyframeMouseDown = (e: React.MouseEvent, keyframe: Keyframe<any>) => {
+    e.stopPropagation();
+    // Implement keyframe dragging logic
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
-      {/* Time Ruler */}
-      <div 
-        className="h-8 bg-gray-800 border-b border-gray-700 relative select-none"
-        style={{ width: `${(duration / 1000) * PIXELS_PER_SECOND}px` }}
-      >
-        {Array.from({ length: Math.ceil(duration / 1000) + 1 }).map((_, i) => (
-          <div 
-            key={i} 
-            className="absolute bottom-0 border-l border-gray-600 h-3 text-xs text-gray-400"
-            style={{ left: `${i * PIXELS_PER_SECOND}px` }}
-          >
-            {i}s
-          </div>
-        ))}
+    <div className="p-4 space-y-4">
+      {/* Controls */}
+      <div className="flex space-x-2">
+        <Button
+          size="icon"
+          variant={isPlaying ? "secondary" : "default"}
+          onClick={isPlaying ? onPause : onPlay}
+        >
+          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+        </Button>
+        
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={onStop}
+        >
+          <Square size={16} />
+        </Button>
+        
+        <Button
+          size="icon"
+          variant={isRecording ? "destructive" : "outline"}
+          onClick={onToggleRecording}
+        >
+          <CircleDot size={16} />
+        </Button>
       </div>
 
-      {/* Tracks */}
-      <div 
+      {/* Timeline */}
+      <div
         ref={timelineRef}
-        className="flex-1 relative overflow-hidden"
+        className="relative h-40 border rounded bg-gray-50"
         onClick={handleTimelineClick}
-        style={{ width: `${(duration / 1000) * PIXELS_PER_SECOND}px` }}
       >
-        {/* Playhead */}
-        <div 
-          className="absolute top-0 bottom-0 w-px bg-red-500 z-20 pointer-events-none"
-          style={{ left: `${(currentTime / duration) * ((duration / 1000) * PIXELS_PER_SECOND)}px` }}
-        />
-
-        {/* Animatable Tracks */}
-        {animatables.map((animatable) => (
-          <div 
-            key={animatable.id}
-            className={`
-              h-[${TIMELINE_HEIGHT}px] relative group border-b border-gray-700
-              ${selectedAnimatableId === animatable.id ? 'bg-gray-700' : 'bg-gray-800'}
-              hover:bg-gray-700
-            `}
-            onClick={() => onAnimatableSelect(animatable.id)}
-          >
-            {/* Track Header */}
-            <div className="absolute left-0 top-0 bottom-0 w-60 bg-gray-800 border-r border-gray-700 flex items-center px-4 justify-between z-10">
-              <span className="font-medium text-gray-200">{animatable.id}</span>
-              <button 
-                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAnimatableRemove(animatable.id);
-                }}
-              >
-                ×
-              </button>
+        {/* Time ruler */}
+        <div className="h-6 border-b relative">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute top-0 h-full border-l text-xs"
+              style={{
+                left: `${(i / 10) * 100}%`,
+              }}
+            >
+              {Math.round((i / 10) * (animation?.duration || 0))}ms
             </div>
+          ))}
+        </div>
 
-            {/* Track Content */}
-            <div className="ml-60 h-full relative">
+        {/* Animatable tracks */}
+        <div className="flex-1 overflow-y-auto">
+          {animation?.animatables.map((animatable) => (
+            <div
+              key={animatable.id}
+              className={`h-12 border-b relative ${
+                animatable.id === selectedAnimatableId ? 'bg-blue-50' : ''
+              }`}
+            >
+              {/* Animatable duration bar */}
+              <div
+                className="absolute h-8 top-2 bg-blue-200 rounded"
+                style={{
+                  left: timeToPixels(animatable.start),
+                  width: timeToPixels(animatable.duration),
+                }}
+              />
+
               {/* Keyframes */}
-              {animatable.keyframes.map((keyframe: Keyframe<any>, index) => (
-                <button
+              {animatable.keyframes.map((keyframe, index) => (
+                <div
                   key={index}
-                  className={`
-                    absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full 
-                    transition-transform hover:scale-125
-                    ${selectedKeyframeId === index.toString() ? 'ring-2 ring-white' : ''}
-                    bg-blue-500 hover:bg-blue-400
-                  `}
-                  style={{ 
-                    left: `${(keyframe.timestamp / duration) * 100}%`,
+                  className="absolute w-3 h-3 bg-blue-500 rounded-full cursor-pointer transform -translate-x-1/2 top-4"
+                  style={{
+                    left: timeToPixels(keyframe.timestamp),
                   }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onKeyframeSelect(animatable.id, index.toString());
-                  }}
+                  onMouseDown={(e) => handleKeyframeMouseDown(e, keyframe)}
                 />
               ))}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {/* Current time indicator */}
+        <div
+          className="absolute top-0 bottom-0 w-px bg-red-500"
+          style={{
+            left: timeToPixels(currentTime),
+          }}
+        />
+      </div>
+
+      {/* Zoom controls */}
+      <div className="flex justify-end space-x-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setZoom(Math.max(0.5, zoom - 0.5))}
+        >
+          -
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setZoom(Math.min(4, zoom + 0.5))}
+        >
+          +
+        </Button>
       </div>
     </div>
   );
-}
+};
+
+export default TimelinePanel;

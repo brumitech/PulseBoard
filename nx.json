@@ -37,7 +37,7 @@
       "plugin": "@nx/jest/plugin",
       "options": {
         "targetName": "test"
-      },
+      }
     },
     {
       "plugin": "@nx/webpack/plugin",
@@ -61,7 +61,8 @@
       },
       "library": {
         "style": "tailwind",
-        "linter": "eslint"
+        "linter": "eslint",
+        "unitTestRunner": "none"
       }
     }
   },
