@@ -95,12 +95,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         </div>
       ))}
       
-      <Button 
-        className="w-full"
-        onClick={handleCreateKeyframe}
-      >
-        Create Keyframe at {currentTime}ms
-      </Button>
     </div>
   );
 };

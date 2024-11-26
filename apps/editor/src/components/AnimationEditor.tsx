@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import TimelinePanel from './Timeline';
 import PropertiesPanel from './Properties';
 import BaseAnimatableComponent from './BaseAnimatableComponent';
@@ -131,49 +131,89 @@ const useAnimatable = (
 };
 
 const usePlayer = (animation: IAnimation | null) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isLooping, setIsLooping] = useState(false);
-
-  const play = useCallback(() => {
-    if (!animation) return;
-    setIsPlaying(true);
-    animation.play();
-  }, [animation]);
-
-  const pause = useCallback(() => {
-    if (!animation) return;
-    setIsPlaying(false);
-    animation.pause();
-  }, [animation]);
-
-  const stop = useCallback(() => {
-    if (!animation) return;
-    setIsPlaying(false);
-    animation.stop();
-    setCurrentTime(0);
-  }, [animation]);
-
-  const seekTo = useCallback(
-    (t: number) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [isLooping, setIsLooping] = useState(false);
+    const startTimeRef = useRef<number | null>(null);
+    const rafIdRef = useRef<number | null>(null);
+  
+    // Clean up RAF on unmount
+    useEffect(() => {
+      return () => {
+        if (rafIdRef.current) {
+          cancelAnimationFrame(rafIdRef.current);
+        }
+      };
+    }, []);
+  
+    const updateAnimation = useCallback((t: number) => {
       if (!animation) return;
-      animation.setT(t);
-      setCurrentTime(t);
-    },
-    [animation]
-  );
-
-  return {
-    isPlaying,
-    currentTime,
-    isLooping,
-    play,
-    pause,
-    stop,
-    seekTo,
-    setIsLooping,
+      
+      const normalizedTime = t % animation.duration;
+      animation.setT(normalizedTime);
+      setCurrentTime(normalizedTime);
+    }, [animation]);
+  
+    const loop = useCallback(() => {
+      if (!isPlaying || !startTimeRef.current || !animation) return;
+  
+      const elapsed = performance.now() - startTimeRef.current;
+      updateAnimation(elapsed);
+  
+      rafIdRef.current = requestAnimationFrame(loop);
+    }, [isPlaying, animation, updateAnimation]);
+  
+    const play = useCallback(() => {
+      if (!animation) return;
+      
+      setIsPlaying(true);
+      startTimeRef.current = performance.now() - currentTime;
+      loop();
+    }, [animation, currentTime, loop]);
+  
+    const pause = useCallback(() => {
+      setIsPlaying(false);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    }, []);
+  
+    const stop = useCallback(() => {
+      setIsPlaying(false);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      updateAnimation(0);
+    }, [updateAnimation]);
+  
+    const seekTo = useCallback((t: number) => {
+      if (!animation) return;
+      
+      const clampedTime = Math.max(0, Math.min(t, animation.duration));
+      updateAnimation(clampedTime);
+      
+      if (isPlaying) {
+        startTimeRef.current = performance.now() - clampedTime;
+      }
+    }, [animation, isPlaying, updateAnimation]);
+  
+    useEffect(() => {
+      if (isPlaying) {
+        loop();
+      }
+    }, [isPlaying, loop]);
+  
+    return {
+      isPlaying,
+      currentTime,
+      isLooping,
+      play,
+      pause,
+      stop,
+      seekTo,
+      setIsLooping
+    };
   };
-};
 
 // Main Component
 const AnimationEditor = () => {
@@ -232,7 +272,7 @@ const AnimationEditor = () => {
   );
 
   return (
-    <div className="h-screen w-full flex flex-col">
+    <div className="h-screen w-full flex flex-col bg-slate-800">
       {/* Upper section */}
       <div className="flex-1 flex">
         {/* Widgets Panel */}

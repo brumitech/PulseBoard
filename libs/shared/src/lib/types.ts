@@ -12,9 +12,6 @@ export interface IAnimation {
     id: string;
     duration: number;
     animatables: IAnimatable<any, any>[];
-    play: () => void;
-    pause: () => void;
-    stop: () => void;
     setT: (t: number) => void;
 }
 
