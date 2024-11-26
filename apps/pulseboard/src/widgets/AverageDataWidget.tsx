@@ -16,8 +16,10 @@ export const fetchAverageData = async (
   toDate?: Date
 ): Promise<{ average: number, count: number } | null> => {
   // If no dates provided, use current date range
-  const now = toDate || new Date();
-  const from = fromDate || new Date(now.getTime() - getTimePeriod(averageType));
+  // const now = toDate || new Date();
+  const now = new Date('2024-11-01T00:00:00')
+  // const from = fromDate || new Date(now.getTime() - getTimePeriod(averageType));
+  const from = new Date('2024-10-01T00:00:00')
 
   const formatDate = (date: Date) => {
     return date.toISOString().replace('Z', '%2b01:00');
@@ -31,7 +33,7 @@ export const fetchAverageData = async (
       {
         method: 'GET',
         headers: {
-          'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
+          'Authorization': `Basic ${window.btoa(`${username}:${password}`)}`,
           'Accept': 'application/json'
         }
       }
@@ -72,7 +74,7 @@ const getTimePeriod = (averageType: 'day' | 'week' | 'month'): number => {
 // Average Data Widget
 export const AverageDataWidget: React.FC<AverageDataProps> = ({ 
   x, y, scale, color, 
-  averageType = 'day', 
+  averageType = 'month', 
   valueType = 'pm10',
   sensorId = '-1' 
 }) => {
@@ -195,7 +197,7 @@ export const ADW: React.FC = () => {
         y={{ value: 100 }}
         scale={{ value: 1 }}
         color={{ value: '#333' }}
-        averageType="day"
+        averageType="month"
         valueType="pm10"
       />
     </div>
