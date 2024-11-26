@@ -1,18 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Screen, ScreenDocument } from '../schemas/screen.schema';
+import { Screen } from '../schemas/screen.schema';
 import { CreateScreenDto } from './dto/create-screen.dto';
 import { UpdateScreenDto } from './dto/update-screen.dto';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ScreensService {
-  constructor(
-    @InjectModel(Screen.name) private screenModel: Model<ScreenDocument>
-  ) {}
+  constructor(@InjectModel(Screen.name) private screenModel: Model<Screen>) {}
 
   async create(createScreenDto: CreateScreenDto): Promise<Screen> {
-    const createdScreen = new this.screenModel(createScreenDto);
+    const createdScreen = new this.screenModel({
+      id: uuidv4(),
+      ...createScreenDto,
+      status: 'inactive',
+      lastPing: new Date(),
+    });
     return createdScreen.save();
   }
 
@@ -21,27 +25,16 @@ export class ScreensService {
   }
 
   async findOne(id: string): Promise<Screen> {
-    const screen = await this.screenModel.findById(id).exec();
-    if (!screen) {
-      throw new NotFoundException(`Screen with ID ${id} not found`);
-    }
-    return screen;
+    return this.screenModel.findOne({ id }).exec();
   }
 
   async update(id: string, updateScreenDto: UpdateScreenDto): Promise<Screen> {
-    const updatedScreen = await this.screenModel
-      .findByIdAndUpdate(id, updateScreenDto, { new: true })
+    return this.screenModel
+      .findOneAndUpdate({ id }, updateScreenDto, { new: true })
       .exec();
-    if (!updatedScreen) {
-      throw new NotFoundException(`Screen with ID ${id} not found`);
-    }
-    return updatedScreen;
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.screenModel.deleteOne({ _id: id }).exec();
-    if (result.deletedCount === 0) {
-      throw new NotFoundException(`Screen with ID ${id} not found`);
-    }
+  async remove(id: string): Promise<Screen> {
+    return this.screenModel.findOneAndDelete({ id }).exec();
   }
 }

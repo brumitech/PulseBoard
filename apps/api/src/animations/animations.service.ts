@@ -1,55 +1,43 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Animation, AnimationDocument } from '../schemas/animation.schema';
+import { Animation } from '../schemas/animation.schema';
 import { CreateAnimationDto } from './dto/create-animation.dto';
 import { UpdateAnimationDto } from './dto/update-animation.dto';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AnimationsService {
   constructor(
-    @InjectModel(Animation.name)
-    private animationModel: Model<AnimationDocument>
+    @InjectModel(Animation.name) private animationModel: Model<Animation>
   ) {}
 
   async create(createAnimationDto: CreateAnimationDto): Promise<Animation> {
-    const createdAnimation = new this.animationModel(createAnimationDto);
+    const createdAnimation = new this.animationModel({
+      id: uuidv4(),
+      ...createAnimationDto,
+    });
     return createdAnimation.save();
   }
 
   async findAll(): Promise<Animation[]> {
-    return this.animationModel.find().populate('widgets').exec();
+    return this.animationModel.find().exec();
   }
 
   async findOne(id: string): Promise<Animation> {
-    const animation = await this.animationModel
-      .findById(id)
-      .populate('widgets')
-      .exec();
-    if (!animation) {
-      throw new NotFoundException(`Animation with ID ${id} not found`);
-    }
-    return animation;
+    return this.animationModel.findOne({ id }).exec();
   }
 
   async update(
     id: string,
     updateAnimationDto: UpdateAnimationDto
   ): Promise<Animation> {
-    const updatedAnimation = await this.animationModel
-      .findByIdAndUpdate(id, updateAnimationDto, { new: true })
-      .populate('widgets')
+    return this.animationModel
+      .findOneAndUpdate({ id }, updateAnimationDto, { new: true })
       .exec();
-    if (!updatedAnimation) {
-      throw new NotFoundException(`Animation with ID ${id} not found`);
-    }
-    return updatedAnimation;
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.animationModel.deleteOne({ _id: id }).exec();
-    if (result.deletedCount === 0) {
-      throw new NotFoundException(`Animation with ID ${id} not found`);
-    }
+  async remove(id: string): Promise<Animation> {
+    return this.animationModel.findOneAndDelete({ id }).exec();
   }
 }

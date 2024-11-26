@@ -4,6 +4,7 @@ import { Play, Pause, RotateCcw, Plus } from 'lucide-react';
 import { Timeline } from '../components/Timeline';
 import { Properties } from '../components/Properties';
 import { useAnimation } from '@pulseboard/shared';
+import { Mockup } from '../components/mockup';
 
 export function App() {
   const {
@@ -36,27 +37,26 @@ export function App() {
   const handleKeyframeTimeChange = (time: number) => {
     if (!selectedAnimatableId || selectedKeyframeId === null) return;
     updateKeyframe(selectedAnimatableId, parseInt(selectedKeyframeId), {
-      timestamp: time
+      timestamp: time,
     });
   };
 
-  const selectedAnimatable = animatables.find(a => a.id === selectedAnimatableId);
+  const selectedAnimatable = animatables.find(
+    (a) => a.id === selectedAnimatableId
+  );
 
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-gray-100">
       {/* Top Bar */}
       <div className="h-14 bg-gray-800 flex items-center px-4 justify-between border-b border-gray-700">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             className="p-2 rounded hover:bg-gray-700"
             onClick={isPlaying ? pause : play}
           >
             {isPlaying ? <Pause size={20} /> : <Play size={20} />}
           </button>
-          <button 
-            className="p-2 rounded hover:bg-gray-700"
-            onClick={stop}
-          >
+          <button className="p-2 rounded hover:bg-gray-700" onClick={stop}>
             <RotateCcw size={20} />
           </button>
           <div className="font-mono text-sm">
@@ -98,7 +98,9 @@ export function App() {
         {/* Right Sidebar - Properties */}
         <Properties
           selectedAnimatable={selectedAnimatable}
-          selectedKeyframeIndex={selectedKeyframeId !== null ? parseInt(selectedKeyframeId) : null}
+          selectedKeyframeIndex={
+            selectedKeyframeId !== null ? parseInt(selectedKeyframeId) : null
+          }
           onKeyframeUpdate={handleKeyframeUpdate}
           onKeyframeTimeChange={handleKeyframeTimeChange}
         />

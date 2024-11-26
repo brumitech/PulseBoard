@@ -1,16 +1,17 @@
-import { IsNumber, IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateScreenDto {
+  @ApiProperty({ description: 'Latitude of the screen location' })
   @IsNumber()
   latitude: number;
 
+  @ApiProperty({ description: 'Longitude of the screen location' })
   @IsNumber()
   longitude: number;
 
-  @IsString()
-  animationId: string;
-
-  @IsBoolean()
+  @ApiPropertyOptional({ description: 'Associated animation ID' })
   @IsOptional()
-  isActive?: boolean;
+  @IsString()
+  animationId?: string;
 }

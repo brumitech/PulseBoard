@@ -1,25 +1,25 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Document } from 'mongoose';
 
-export type ScreenDocument = Screen & Document;
+@Schema({ collection: 'screens' })
+export class Screen extends Document {
+  @Prop({ required: true })
+  id: string;
 
-@Schema({ timestamps: true })
-export class Screen {
   @Prop({ required: true })
   latitude: number;
 
   @Prop({ required: true })
   longitude: number;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: 'Animation',
-    required: true,
-  })
-  animationId: string;
+  @Prop({ type: String, ref: 'animations' })
+  animationId?: string;
 
-  @Prop({ default: true })
-  isActive: boolean;
+  @Prop({ required: true, default: 'inactive' })
+  status: 'active' | 'inactive';
+
+  @Prop()
+  lastPing?: Date;
 }
 
 export const ScreenSchema = SchemaFactory.createForClass(Screen);

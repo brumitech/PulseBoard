@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Animation, AnimationSchema } from '../schemas/animation.schema';
-import { AnimationsService } from './animations.service';
 import { AnimationsController } from './animations.controller';
+import { AnimationsService } from './animations.service';
+import { Animation, AnimationSchema } from '../schemas/animation.schema';
 
 @Module({
   imports: [

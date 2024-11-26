@@ -1,18 +1,37 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Document } from 'mongoose';
 
-export type AnimationDocument = Animation & Document;
+class KeyframeProps {
+  x: number;
+  y: number;
+  scale: number;
+  color: string;
+}
 
-@Schema({ timestamps: true })
-export class Animation {
+class Keyframe {
+  timestamp: number;
+  props: KeyframeProps;
+}
+
+class Widget {
+  id: string;
+  type: string;
+  keyframes: Keyframe[];
+}
+
+@Schema({ collection: 'animations' })
+export class Animation extends Document {
+  @Prop({ required: true })
+  id: string;
+
+  @Prop({ required: true })
+  name: string;
+
   @Prop({ required: true })
   duration: number;
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Widget' }] })
-  widgets: string[];
-
-  @Prop({ type: String, default: 'lerp' })
-  interpolationFunction: string;
+  @Prop({ type: Array, required: true })
+  widgets: Widget[];
 }
 
 export const AnimationSchema = SchemaFactory.createForClass(Animation);

@@ -2,11 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from '../database/database.module';
 import { ScreensModule } from '../screens/screens.module';
-import { AnimationsModule } from '../animations/animations.module';
-import { WidgetsModule } from '../widgets/widgets.module';
-import { KeyframesModule } from '../keyframes/keyframes.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AnimationsModule } from '../animations/animations.module';
 
 @Module({
   imports: [
@@ -17,8 +15,6 @@ import { AppService } from './app.service';
     DatabaseModule,
     ScreensModule,
     AnimationsModule,
-    WidgetsModule,
-    KeyframesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
