@@ -18,7 +18,7 @@ export interface IAnimation {
     setT: (t: number) => void;
 }
 
-export interface IAnimatable<TProps extends object, CProps extends object> {
+export interface IAnimatable<TProps extends Record<string, Prop<any>>, CProps extends object> {
     id: string;
     component: ComponentType<TProps & CProps>;
     componentProps: CProps;
@@ -33,7 +33,6 @@ export interface IAnimatable<TProps extends object, CProps extends object> {
     onUpdate?: (animatable: IAnimatable<TProps, CProps>, t: number) => void;
     onEnd?: (animatable: IAnimatable<TProps, CProps>, t: number) => void;
 }
-
 export interface Keyframe<TProps extends object> {
     timestamp: number;
     props: Partial<TProps>;

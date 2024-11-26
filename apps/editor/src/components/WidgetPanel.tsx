@@ -1,63 +1,74 @@
-import { useState } from 'react';
-import { WidgetDefinition } from '@pulseboard/shared';
-import { Search, Plus } from 'lucide-react';
+import React from 'react';
+import { Plus } from 'lucide-react';
+import { widgetRegistry } from '@pulseboard/widgets';
+import { IAnimatable, Prop } from '@pulseboard/shared';
 
 interface WidgetPanelProps {
-  availableWidgets: WidgetDefinition[];
-  onAddWidget: (widget: WidgetDefinition) => void;
+  onAddWidget: (widget: IAnimatable<any, any>) => void;
 }
 
-export function WidgetPanel({ availableWidgets, onAddWidget }: WidgetPanelProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+export const WidgetPanel: React.FC<WidgetPanelProps> = ({ onAddWidget }) => {
+  const handleAddWidget = (widgetDef: typeof widgetRegistry[0]) => {
+    console.log('Adding widget:', widgetDef);
 
-  const filteredWidgets = availableWidgets.filter(widget =>
-    widget.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    widget.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
+    // Create new animatable
+    const animatable: IAnimatable<any, any> = {
+      id: `${widgetDef.id}-${Date.now()}`,
+      component: widgetDef.component,
+      start: 0,
+      componentProps: {},
+      duration: widgetDef.defaultDuration,
+      props: Object.entries(widgetDef.defaultProps).reduce((acc, [key, value]) => {
+        // Ensure we create new Prop instances
+        if (value instanceof Prop) {
+          acc[key] = new Prop(value.value, value.type, value.text, value.groupTag);
+        } else {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>),
+      keyframes: [
+        {
+          timestamp: 0,
+          props: Object.entries(widgetDef.defaultProps).reduce((acc, [key, value]) => {
+            acc[key] = value instanceof Prop ? value.value : value;
+            return acc;
+          }, {} as Record<string, any>)
+        }
+      ]
+    };
+    console.log('Created animatable:', animatable);
+
+    // Call the onAddWidget prop with the new animatable
+    onAddWidget(animatable);
+  };
+
+  // Add drag start handler
+  const handleDragStart = (e: React.DragEvent, widgetDef: typeof widgetRegistry[0]) => {
+    e.dataTransfer.setData('widget-id', widgetDef.id);
+  };
 
   return (
-    <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
-      {/* Search Bar */}
-      <div className="p-4 border-b border-gray-700">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          <input
-            type="text"
-            placeholder="Search widgets..."
-            className="w-full bg-gray-700 text-gray-200 pl-10 pr-4 py-2 rounded-md 
-                     border border-gray-600 focus:border-blue-500 focus:outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Widget List */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <h2 className="text-sm font-semibold text-gray-400 mb-4">Available Widgets</h2>
-        <div className="space-y-2">
-          {filteredWidgets.map(widget => (
-            <div
-              key={widget.id}
-              className="group bg-gray-700 rounded-lg p-3 hover:bg-gray-600 cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-200">{widget.name}</h3>
-                  <p className="text-xs text-gray-400">{widget.description}</p>
-                </div>
-                <button
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 
-                           hover:bg-gray-500 rounded-md"
-                  onClick={() => onAddWidget(widget)}
-                >
-                  <Plus size={16} className="text-gray-300" />
-                </button>
-              </div>
+    <div className="h-full p-4">
+      <h2 className="text-lg font-semibold mb-4">Widgets</h2>
+      <div className="space-y-2">
+        {widgetRegistry.map((widget) => (
+          <div
+            key={widget.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, widget)}
+            onClick={() => handleAddWidget(widget)}
+            className="p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600"
+          >
+            <div className="flex items-center justify-between">
+              <span>{widget.name}</span>
+              <Plus size={16} />
             </div>
-          ))}
-        </div>
+            <p className="text-sm text-gray-400 mt-1">{widget.description}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
-}
+};

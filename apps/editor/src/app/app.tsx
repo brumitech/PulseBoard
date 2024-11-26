@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Play, Pause, RotateCcw, Plus, X } from 'lucide-react';
+import { useEffect, useCallback } from 'react';
+import { Play, Pause, RotateCcw } from 'lucide-react';
+import { useAnimation, IAnimatable } from '@pulseboard/shared';
 import { Timeline } from '../components/Timeline';
+import { Preview } from '../components/Preview';
 import { Properties } from '../components/Properties';
-import { useAnimation, IAnimatable, Prop } from '@pulseboard/shared';
-import { widgetRegistry } from '@pulseboard/widgets';
+import { WidgetPanel } from '../components/WidgetPanel';
 
 export function App() {
-  const [isWidgetPanelOpen, setIsWidgetPanelOpen] = useState(true);
   const {
     currentTime,
     isPlaying,
@@ -23,160 +23,125 @@ export function App() {
     selectKeyframe,
     removeAnimatable,
     updateKeyframe,
-    addAnimatable
-  } = useAnimation(6000);
+    addAnimatable,
+    addKeyframe,
+  } = useAnimation(6000); // 6 seconds total duration
 
   useEffect(() => {
     initAnimation();
   }, [initAnimation]);
 
-  const handleKeyframeUpdate = (updates: Partial<any>) => {
-    if (!selectedAnimatableId || selectedKeyframeId === null) return;
-    updateKeyframe(selectedAnimatableId, parseInt(selectedKeyframeId), updates);
-  };
+  const handleAnimatableUpdate = useCallback(
+    (id: string, updates: Partial<IAnimatable<any, any>>) => {
+      console.log('Updating animatable:', id, updates);
+      const animatable = animatables.find((a) => a.id === id);
+      if (!animatable) return;
 
-  const handleKeyframeTimeChange = (time: number) => {
-    if (!selectedAnimatableId || selectedKeyframeId === null) return;
-    updateKeyframe(selectedAnimatableId, parseInt(selectedKeyframeId), {
-      timestamp: time
-    });
-  };
+      const updatedAnimatable = {
+        ...animatable,
+        ...updates,
+      };
 
-  const handleAddWidget = (widgetDef: typeof widgetRegistry[0]) => {
-    const animatable: IAnimatable<any, any> = {
-      id: `${widgetDef.id}-${Date.now()}`,
-      component: widgetDef.component,
-      start: 0,
-      componentProps: {},
-      duration: widgetDef.defaultDuration,
-      props: Object.entries(widgetDef.defaultProps).reduce((acc, [key, value]) => {
-        if (typeof value === 'number') {
-          acc[key] = Prop.number(value, key, 'transform');
-        } else if (typeof value === 'string') {
-          if (value.startsWith('rgb')) {
-            acc[key] = Prop.color(value, key, 'appearance');
-          } else {
-            acc[key] = Prop.string(value, key);
-          }
-        } else {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, any>),
-      keyframes: [
-        {
-          timestamp: 0,
-          props: Object.entries(widgetDef.defaultProps).reduce((acc, [key, value]) => {
-            acc[key] = value instanceof Prop ? value.value : value;
-            return acc;
-          }, {} as Record<string, any>)
-        }
-      ]
-    };
+      // Find and update the animatable in the list
+      const index = animatables.findIndex((a) => a.id === id);
+      if (index !== -1) {
+        const newAnimatables = [...animatables];
+        newAnimatables[index] = updatedAnimatable;
+        // Update the animation with the new animatables
+        initAnimation();
+      }
+    },
+    [animatables, initAnimation]
+  );
 
-    addAnimatable(animatable);
-    setIsWidgetPanelOpen(false);
-  };
+  const handleKeyframeUpdate = useCallback(
+    (animatableId: string, keyframeIndex: number, updates: any) => {
+      console.log('Updating keyframe:', { animatableId, keyframeIndex, updates });
+      updateKeyframe(animatableId, keyframeIndex, updates);
+      // Re-initialize animation to apply changes
+      initAnimation();
+    },
+    [updateKeyframe, initAnimation]
+  );
 
-  const selectedAnimatable = animatables.find(a => a.id === selectedAnimatableId);
+  const handleAddKeyframe = useCallback(
+    (animatableId: string, timestamp: number) => {
+      console.log('App handleAddKeyframe called with:', { animatableId, timestamp });
+      
+      // Simply call addKeyframe, all checks and initialization are handled within it
+      addKeyframe(animatableId, timestamp);
+    },
+    [addKeyframe]
+);
 
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-gray-100">
-      {/* Top Bar */}
+      {/* Top Bar with Controls */}
       <div className="h-14 bg-gray-800 flex items-center px-4 justify-between border-b border-gray-700">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             className="p-2 rounded hover:bg-gray-700"
             onClick={isPlaying ? pause : play}
           >
             {isPlaying ? <Pause size={20} /> : <Play size={20} />}
           </button>
-          <button 
-            className="p-2 rounded hover:bg-gray-700"
-            onClick={stop}
-          >
+          <button className="p-2 rounded hover:bg-gray-700" onClick={stop}>
             <RotateCcw size={20} />
           </button>
           <div className="font-mono text-sm">
             {(currentTime / 1000).toFixed(2)}s / {(duration / 1000).toFixed(2)}s
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button 
-            className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 flex items-center gap-2"
-            onClick={() => setIsWidgetPanelOpen(true)}
-          >
-            <Plus size={16} />
-            Add Widget
-          </button>
-        </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Preview */}
-        <div className="w-80 bg-gray-800 border-r border-gray-700 p-4">
-          <h2 className="font-semibold mb-4">Preview</h2>
-          {/* Add preview component here */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Preview Area */}
+        <div className="h-1/2 bg-gray-800 border-b border-gray-700 p-4">
+          <Preview currentTime={currentTime} animatables={animatables} />
         </div>
 
-        {/* Center - Timeline */}
-        <div className="flex-1 overflow-auto">
-          <Timeline
-            duration={duration}
-            currentTime={currentTime}
-            animatables={animatables}
-            selectedAnimatableId={selectedAnimatableId}
-            selectedKeyframeId={selectedKeyframeId}
-            onTimeChange={setTime}
-            onKeyframeSelect={selectKeyframe}
-            onAnimatableSelect={selectAnimatable}
-            onAnimatableRemove={removeAnimatable}
-          />
-        </div>
-
-        {/* Right Sidebar - Properties */}
-        <Properties
-          selectedAnimatable={selectedAnimatable}
-          selectedKeyframeIndex={selectedKeyframeId !== null ? parseInt(selectedKeyframeId) : null}
-          onKeyframeUpdate={handleKeyframeUpdate}
-          onKeyframeTimeChange={handleKeyframeTimeChange}
-        />
-
-        {/* Widget Panel Modal */}
-        {isWidgetPanelOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg w-[600px] max-h-[80vh] flex flex-col">
-              <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                <h2 className="font-semibold text-lg">Add Widget</h2>
-                <button 
-                  className="p-2 hover:bg-gray-700 rounded-full"
-                  onClick={() => setIsWidgetPanelOpen(false)}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-4 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
-                  {widgetRegistry.map(widget => (
-                    <div
-                      key={widget.id}
-                      className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 cursor-pointer"
-                      onClick={() => handleAddWidget(widget)}
-                    >
-                      <h3 className="font-medium mb-2">{widget.name}</h3>
-                      <p className="text-sm text-gray-400">{widget.description}</p>
-                      <span className="inline-block mt-2 text-xs bg-gray-800 px-2 py-1 rounded">
-                        {widget.category}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+        {/* Bottom Section */}
+        <div className="h-1/2 flex">
+          {/* Widget Panel */}
+          <div className="w-64 bg-gray-800 border-r border-gray-700">
+            <WidgetPanel onAddWidget={addAnimatable} />
           </div>
-        )}
+
+          {/* Timeline */}
+          <div className="flex-1">
+            <Timeline
+              duration={duration}
+              currentTime={currentTime}
+              animatables={animatables}
+              selectedAnimatableId={selectedAnimatableId}
+              selectedKeyframeId={selectedKeyframeId}
+              onTimeChange={setTime}
+              onKeyframeSelect={selectKeyframe}
+              onAnimatableSelect={selectAnimatable}
+              onAnimatableRemove={removeAnimatable}
+              onAnimatableUpdate={handleAnimatableUpdate}
+            />
+          </div>
+
+          {/* Properties Panel */}
+          <div className="w-80 bg-gray-800 border-l border-gray-700">
+            <Properties
+              selectedAnimatable={animatables.find(
+                (a) => a.id === selectedAnimatableId
+              )}
+              selectedKeyframeIndex={
+                selectedKeyframeId !== null
+                  ? parseInt(selectedKeyframeId)
+                  : null
+              }
+              onKeyframeUpdate={handleKeyframeUpdate}
+              onAddKeyframe={handleAddKeyframe}
+              currentTime={currentTime}
+              onKeyframeSelect={selectKeyframe}  // Update this
+              />
+          </div>
+        </div>
       </div>
     </div>
   );

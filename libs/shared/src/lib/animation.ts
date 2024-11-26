@@ -1,4 +1,4 @@
-import { interpolate } from './prop';
+import { interpolate, Prop } from './prop';
 import { IAnimation, IAnimatable, Keyframe } from './types';
 
 export class Animation implements IAnimation {
@@ -11,30 +11,62 @@ export class Animation implements IAnimation {
   private generalTime: number = 0; // Elapsed time since animation start
   private initialProps: Record<string, any>[] = []; // Stores initial props for each animatable
 
-  constructor(id: string, duration: number, animatables: IAnimatable<any, any>[]) {
+  constructor(
+    id: string,
+    duration: number,
+    animatables: IAnimatable<any, any>[]
+  ) {
     this.id = id;
     this.duration = duration;
     this.animatables = animatables;
 
-    // Store initial props and ensure the first keyframe exists
+    console.log(
+      'Animation constructor - Initializing with animatables:',
+      animatables
+    );
+
     this.animatables.forEach((animatable) => {
+      console.log('Processing animatable:', animatable.id);
+
       // Store deep clones of the initial props
-      this.initialProps.push(
-        Object.keys(animatable.props).reduce((acc, key) => {
-          acc[key] = { ...animatable.props[key] }; // Clone each Prop object
+      const initialProps = Object.entries(animatable.props).reduce(
+        (acc, [key, prop]) => {
+          console.log('Cloning prop:', key, prop);
+          if (prop instanceof Prop) {
+            acc[key] = new Prop(
+              prop.value,
+              prop.type,
+              prop.text,
+              prop.groupTag
+            );
+          } else {
+            acc[key] = prop;
+          }
           return acc;
-        }, {} as Record<string, any>)
+        },
+        {} as Record<string, Prop<any>>
       );
 
+      this.initialProps.push(initialProps);
+
       // Add the first keyframe if it doesn't exist
-      if (animatable.keyframes.length === 0 || animatable.keyframes[0].timestamp !== 0) {
-        animatable.keyframes.unshift({
+      if (
+        animatable.keyframes.length === 0 ||
+        animatable.keyframes[0].timestamp !== 0
+      ) {
+        console.log('Adding initial keyframe for animatable:', animatable.id);
+        const initialKeyframe = {
           timestamp: 0,
           props: Object.entries(animatable.props).reduce((acc, [key, prop]) => {
-            acc[key] = prop.value; // Extract the value for keyframes
+            if (prop instanceof Prop) {
+              acc[key] = prop.value;
+            } else {
+              acc[key] = prop;
+            }
             return acc;
           }, {} as Record<string, any>),
-        });
+        };
+        animatable.keyframes.unshift(initialKeyframe);
       }
 
       animatable.once?.(animatable);
@@ -44,10 +76,13 @@ export class Animation implements IAnimation {
   resetProps() {
     this.animatables.forEach((animatable, index) => {
       // Reset props to their initial values
-      animatable.props = Object.keys(this.initialProps[index]).reduce((acc, key) => {
-        acc[key] = { ...this.initialProps[index][key] }; // Deep clone the Prop object
-        return acc;
-      }, {} as Record<string, any>);
+      animatable.props = Object.keys(this.initialProps[index]).reduce(
+        (acc, key) => {
+          acc[key] = { ...this.initialProps[index][key] }; // Deep clone the Prop object
+          return acc;
+        },
+        {} as Record<string, any>
+      );
     });
   }
 
@@ -78,26 +113,46 @@ export class Animation implements IAnimation {
   }
 
   setT(t: number) {
+    console.log('Setting time:', t);
+
     this.generalTime = t;
 
     this.animatables.forEach((animatable) => {
+      console.log('Processing animatable for time update:', animatable.id);
+
       const { keyframes, props, onStart, onUpdate, onEnd } = animatable;
 
       // Find surrounding keyframes
-      const prevKeyframe = keyframes.slice().reverse().find((kf) => kf.timestamp <= t);
+      const prevKeyframe = keyframes
+        .slice()
+        .reverse()
+        .find((kf) => kf.timestamp <= t);
       const nextKeyframe = keyframes.find((kf) => kf.timestamp > t);
 
+      console.log('Found keyframes:', {
+        prev: prevKeyframe?.timestamp,
+        next: nextKeyframe?.timestamp,
+      });
+   
       if (prevKeyframe && nextKeyframe) {
         const progress =
-          (t - prevKeyframe.timestamp) / (nextKeyframe.timestamp - prevKeyframe.timestamp);
+          (t - prevKeyframe.timestamp) /
+          (nextKeyframe.timestamp - prevKeyframe.timestamp);
 
         // Interpolate each prop value
         Object.entries(props).forEach(([key, prop]) => {
+          // Add type assertion here
+          const typedProp = prop as Prop<any>;
           const prevValue = prevKeyframe.props[key];
           const nextValue = nextKeyframe.props[key] ?? prevValue;
 
           if (prevValue !== undefined && nextValue !== undefined) {
-            prop.value = interpolate(prevValue, nextValue, progress, prop.type);
+            typedProp.value = interpolate(
+              prevValue,
+              nextValue,
+              progress,
+              typedProp.type
+            );
           }
         });
 
@@ -106,7 +161,8 @@ export class Animation implements IAnimation {
         // Apply the last keyframe prop values
         Object.entries(prevKeyframe.props).forEach(([key, value]) => {
           if (value !== undefined) {
-            props[key].value = value;
+            const typedProp = props[key] as Prop<any>;
+            typedProp.value = value;
           }
         });
 
