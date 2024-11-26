@@ -1,253 +1,170 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Trash2 } from 'lucide-react';
-import { IAnimatable } from '@pulseboard/shared';
+import React, { useRef, useState, useCallback } from 'react';
+import { IAnimation, IAnimatable, Keyframe } from '@pulseboard/shared';
+import { Play, Pause, Square, RotateCw, CircleDot } from 'lucide-react';
+import Button from './common/Button';
 
-interface TimelineProps {
-  duration: number;
+interface TimelinePanelProps {
+  animation: IAnimation | null;
   currentTime: number;
-  animatables: IAnimatable<any, any>[];
+  isPlaying: boolean;
+  isRecording?: boolean;
+  onSeek: (time: number) => void;
+  onPlay: () => void;
+  onPause: () => void;
+  onStop: () => void;
+  onToggleRecording?: () => void;
   selectedAnimatableId: string | null;
-  selectedKeyframeId: string | null;
-  onTimeChange: (time: number) => void;
-  onKeyframeSelect: (animatableId: string, keyframeId: string | null) => void;
-  onAnimatableSelect: (id: string | null) => void;
-  onAnimatableRemove: (id: string) => void;
-  onAnimatableUpdate: (id: string, updates: Partial<IAnimatable<any, any>>) => void;
 }
 
-export const Timeline: React.FC<TimelineProps> = ({
-  duration,
+const TimelinePanel: React.FC<TimelinePanelProps> = ({
+  animation,
   currentTime,
-  animatables,
+  isPlaying,
+  isRecording,
+  onSeek,
+  onPlay,
+  onPause,
+  onStop,
+  onToggleRecording,
   selectedAnimatableId,
-  selectedKeyframeId,
-  onTimeChange,
-  onKeyframeSelect,
-  onAnimatableSelect,
-  onAnimatableRemove,
-  onAnimatableUpdate,
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
-  const [isDraggingCursor, setIsDraggingCursor] = useState(false);
-  const [isDraggingItem, setIsDraggingItem] = useState(false);
-    const [dragStartX, setDragStartX] = useState(0);
-  const [draggedAnimatable, setDraggedAnimatable] = useState<string | null>(null);
-  const [dragStartTime, setDragStartTime] = useState(0);
-  const [dragOverTrash, setDragOverTrash] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const timeToX = (time: number): number => {
-    if (!timelineRef.current) return 0;
-    return (time / duration) * timelineRef.current.clientWidth;
-  };
+  const timeToPixels = useCallback((time: number) => {
+    return (time / (animation?.duration || 1)) * (timelineRef.current?.clientWidth || 0) * zoom;
+  }, [animation?.duration, zoom]);
 
-  const xToTime = (x: number): number => {
-    if (!timelineRef.current) return 0;
-    return Math.max(0, Math.min(duration, (x / timelineRef.current.clientWidth) * duration));
-  };
+  const pixelsToTime = useCallback((pixels: number) => {
+    return (pixels / (timelineRef.current?.clientWidth || 1)) * (animation?.duration || 0) / zoom;
+  }, [animation?.duration, zoom]);
 
-  const handleAnimatableDragStart = (e: React.DragEvent, animatable: IAnimatable<any, any>) => {
-    const rect = timelineRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    setDraggedAnimatable(animatable.id);
-    setDragStartX(e.clientX - rect.left);
-    setDragStartTime(animatable.start);
+  const handleTimelineClick = useCallback((e: React.MouseEvent) => {
+    if (!timelineRef.current) return;
     
-    e.dataTransfer.setData('animatable-id', animatable.id);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleAnimatableDragEnd = () => {
-    setDraggedAnimatable(null);
-    setDragOverTrash(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggedAnimatable || !timelineRef.current) return;
-
     const rect = timelineRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const deltaX = x - dragStartX;
-    const deltaTime = xToTime(deltaX);
-    
-    const animatable = animatables.find(a => a.id === draggedAnimatable);
-    if (!animatable) return;
+    const newTime = pixelsToTime(x);
+    onSeek(Math.max(0, Math.min(newTime, animation?.duration || 0)));
+  }, [animation?.duration, pixelsToTime, onSeek]);
 
-    const newStart = Math.max(0, dragStartTime + deltaTime);
-    if (newStart !== animatable.start) {
-      onAnimatableUpdate(draggedAnimatable, { start: newStart });
-    }
-  };
-
-  const handleTrashDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (draggedAnimatable) {
-      setDragOverTrash(true);
-    }
-  };
-
-  const handleTrashDragLeave = () => {
-    setDragOverTrash(false);
-  };
-
-  const handleTrashDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const animatableId = e.dataTransfer.getData('animatable-id');
-    if (animatableId) {
-      onAnimatableRemove(animatableId);
-    }
-    setDragOverTrash(false);
-  };
-  
-  // Handle cursor drag
-  const handleCursorMouseDown = (e: React.MouseEvent) => {
+  const handleKeyframeMouseDown = (e: React.MouseEvent, keyframe: Keyframe<any>) => {
     e.stopPropagation();
-    setIsDraggingCursor(true);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    // Implement keyframe dragging logic
   };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDraggingCursor || !timelineRef.current) return;
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    onTimeChange((x / rect.width) * duration);
-  };
-
-  const handleMouseUp = () => {
-    setIsDraggingCursor(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-
-  // Handle timeline click
-  const handleTimelineClick = (e: React.MouseEvent) => {
-    if (!timelineRef.current || isDraggingItem) return;
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    onTimeChange((x / rect.width) * duration);
-  };
-
-  // Clean up event listeners
-  useEffect(() => {
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
-
-
-  // Generate time markers
-  const timeMarkers = [];
-  const markerInterval = 1; // 1 second intervals
-  for (let i = 0; i <= duration / 1000; i += markerInterval) {
-    timeMarkers.push(
-      <div
-        key={i}
-        className="absolute h-3 border-l border-gray-400"
-        style={{ left: `${(i * 1000 * 100) / duration}%` }}
-      >
-        <div className="text-xs text-gray-400 mt-3">{i}s</div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
-      {/* Ruler */}
-      <div className="h-8 relative bg-gray-800 border-b border-gray-700">
-        {timeMarkers}
-      </div>
-  
-      {/* Tracks */}
-      <div className="flex-1 relative overflow-y-auto">
-        <div
-          ref={timelineRef}
-          className="relative h-full min-h-[200px]"
-          onClick={handleTimelineClick}
-          onDragOver={handleDragOver}
+    <div className="p-4 space-y-4">
+      {/* Controls */}
+      <div className="flex space-x-2">
+        <Button
+          size="icon"
+          variant={isPlaying ? "secondary" : "default"}
+          onClick={isPlaying ? onPause : onPlay}
         >
-          {/* Delete zone */}
-          <div
-            className={`absolute top-2 right-2 w-10 h-10 flex items-center justify-center rounded transition-colors ${
-              dragOverTrash ? 'bg-red-500' : 'bg-red-500/20'
-            } border-2 ${
-              dragOverTrash ? 'border-red-300' : 'border-red-500/50'
-            }`}
-            onDragEnter={handleTrashDragEnter}
-            onDragLeave={handleTrashDragLeave}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleTrashDrop}
-          >
-            <Trash2 className={`${dragOverTrash ? 'text-white' : 'text-red-500'}`} size={20} />
-          </div>
-  
-          {/* Animatables */}
-          {animatables.map((animatable, index) => (
+          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+        </Button>
+        
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={onStop}
+        >
+          <Square size={16} />
+        </Button>
+        
+        <Button
+          size="icon"
+          variant={isRecording ? "destructive" : "outline"}
+          onClick={onToggleRecording}
+        >
+          <CircleDot size={16} />
+        </Button>
+      </div>
+
+      {/* Timeline */}
+      <div
+        ref={timelineRef}
+        className="relative h-40 border rounded bg-gray-50"
+        onClick={handleTimelineClick}
+      >
+        {/* Time ruler */}
+        <div className="h-6 border-b relative">
+          {Array.from({ length: 10 }).map((_, i) => (
             <div
-              key={animatable.id}
-              draggable
-              onDragStart={(e) => handleAnimatableDragStart(e, animatable)}
-              onDragEnd={handleAnimatableDragEnd}
-              className={`absolute h-12 rounded cursor-pointer ${
-                selectedAnimatableId === animatable.id
-                  ? 'bg-blue-500'
-                  : 'bg-blue-400'
-              } ${draggedAnimatable === animatable.id ? 'opacity-50' : ''}`}
+              key={i}
+              className="absolute top-0 h-full border-l text-xs"
               style={{
-                left: `${(animatable.start * 100) / duration}%`,
-                width: `${(animatable.duration * 100) / duration}%`,
-                top: `${index * 60 + 10}px`,
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAnimatableSelect(animatable.id);
-                onKeyframeSelect(animatable.id, '0');  // Select first keyframe by default
+                left: `${(i / 10) * 100}%`,
               }}
             >
-              <div className="px-2 py-1 text-sm text-white truncate">
-                {animatable.id}
-              </div>
-  
+              {Math.round((i / 10) * (animation?.duration || 0))}ms
+            </div>
+          ))}
+        </div>
+
+        {/* Animatable tracks */}
+        <div className="flex-1 overflow-y-auto">
+          {animation?.animatables.map((animatable) => (
+            <div
+              key={animatable.id}
+              className={`h-12 border-b relative ${
+                animatable.id === selectedAnimatableId ? 'bg-blue-50' : ''
+              }`}
+            >
+              {/* Animatable duration bar */}
+              <div
+                className="absolute h-8 top-2 bg-blue-200 rounded"
+                style={{
+                  left: timeToPixels(animatable.start),
+                  width: timeToPixels(animatable.duration),
+                }}
+              />
+
               {/* Keyframes */}
-              {animatable.keyframes.map((keyframe, kfIndex) => (
+              {animatable.keyframes.map((keyframe, index) => (
                 <div
-                  key={kfIndex}
-                  className={`absolute w-3 h-3 rounded-full -bottom-1.5 ${
-                    selectedKeyframeId === kfIndex.toString() &&
-                    selectedAnimatableId === animatable.id
-                      ? 'bg-yellow-300'
-                      : 'bg-yellow-500'
-                  } hover:scale-125 transition-transform`}
+                  key={index}
+                  className="absolute w-3 h-3 bg-blue-500 rounded-full cursor-pointer transform -translate-x-1/2 top-4"
                   style={{
-                    left: `${(keyframe.timestamp * 100) / animatable.duration}%`,
-                    transform: 'translateX(-50%)',
+                    left: timeToPixels(keyframe.timestamp),
                   }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onKeyframeSelect(animatable.id, kfIndex.toString());
-                  }}
+                  onMouseDown={(e) => handleKeyframeMouseDown(e, keyframe)}
                 />
               ))}
             </div>
           ))}
-  
-          {/* Current time indicator with draggable cursor */}
-          <div
-            className="absolute top-0 bottom-0 flex items-center cursor-ew-resize group"
-            style={{ left: `${(currentTime * 100) / duration}%` }}
-            onMouseDown={handleCursorMouseDown}
-          >
-            {/* Cursor line */}
-            <div className="w-0.5 h-full bg-white group-hover:bg-blue-500" />
-            
-            {/* Cursor handle */}
-            <div className="absolute top-0 -translate-x-1/2 w-4 h-4 bg-white rounded-full group-hover:bg-blue-500 group-hover:scale-110 transition-all" />
-          </div>
         </div>
+
+        {/* Current time indicator */}
+        <div
+          className="absolute top-0 bottom-0 w-px bg-red-500"
+          style={{
+            left: timeToPixels(currentTime),
+          }}
+        />
+      </div>
+
+      {/* Zoom controls */}
+      <div className="flex justify-end space-x-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setZoom(Math.max(0.5, zoom - 0.5))}
+        >
+          -
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setZoom(Math.min(4, zoom + 0.5))}
+        >
+          +
+        </Button>
       </div>
     </div>
   );
 };
+
+export default TimelinePanel;
