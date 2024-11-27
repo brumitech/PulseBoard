@@ -215,163 +215,204 @@ const usePlayer = (animation: IAnimation | null) => {
     };
   };
 
-// Main Component
-const AnimationEditor = () => {
-  const [selectedAnimatableId, setSelectedAnimatableId] = useState<
-    string | null
-  >(null);
-  const { animation, setAnimation, addAnimatable } = useAnimation();
-  const { selectedAnimatable, updateAnimatable, addKeyframe } = useAnimatable(
-    animation,
-    selectedAnimatableId,
-    setAnimation
-  );
-  const player = usePlayer(animation);
-
-  // Initialize animation when component mounts
-  useEffect(() => {
-    // Create a new empty animation
-    const newAnimation = new Animation('default-animation', 10000, []); // 10 seconds duration
-    setAnimation(newAnimation);
-  }, [setAnimation]);
-
-  // Handler for adding widgetsf
-  const handleAddWidget = useCallback(
-    (widget: WidgetDefinition) => {
-      addAnimatable(widget);
-    },
-    [addAnimatable]
-  );
-
-  // Handler for updating properties
-  const handleUpdateProp = useCallback(
-    (key: string, value: any) => {
-      if (!selectedAnimatable) return;
-
-      const updatedProps = {
-        ...selectedAnimatable.props,
-        [key]: {
-          ...selectedAnimatable.props[key],
-          value,
-        },
-      };
-
-      updateAnimatable({ props: updatedProps });
-    },
-    [selectedAnimatable, updateAnimatable]
-  );
-
-  // Handler for creating keyframes
-  const handleCreateKeyframe = useCallback(
-    (props: Record<string, any>) => {
-      if (!animation || !selectedAnimatableId) return;
-
-      addKeyframe(player.currentTime, props);
-    },
-    [animation, selectedAnimatableId, player.currentTime, addKeyframe]
-  );
-
-  return (
-    <div className="h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))]" />
-      
-      {/* Main content */}
-      <div className="relative h-full flex flex-col px-4">
-        {/* Header */}
-        <div className="flex-none py-4">
-          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 via-blue-100 to-gray-200">
-            Animation Editor
-          </h1>
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-blue-500/50 to-transparent mt-1" />
-        </div>
+  const AnimationEditor = () => {
+    const [selectedAnimatableId, setSelectedAnimatableId] = useState<string | null>(null);
+    const { animation, setAnimation, addAnimatable } = useAnimation();
+    const { selectedAnimatable, updateAnimatable, addKeyframe } = useAnimatable(
+      animation,
+      selectedAnimatableId,
+      setAnimation
+    );
+    const player = usePlayer(animation);
   
-        {/* Upper section */}
-        <div className="flex-1 flex space-x-4 min-h-0">
-          {/* Widgets Panel */}
-          <div className="w-1/5 flex flex-col group">
-            <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
-              <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-gray-900/50 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/50">
-                <div className="p-4">
-                  <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
-                    Widgets
+    // Ref and state for Preview Panel dimensions
+    const previewRef = useRef<HTMLDivElement | null>(null);
+    const [previewDimensions, setPreviewDimensions] = useState({
+      width: 0,
+      height: 0,
+    });
+  
+    // Initialize animation when component mounts
+    useEffect(() => {
+      const newAnimation = new Animation('default-animation', 10000, []); // 10 seconds duration
+      setAnimation(newAnimation);
+    }, [setAnimation]);
+  
+    // Measure the dimensions of the Preview Panel
+    useEffect(() => {
+      const handleResize = () => {
+        if (previewRef.current) {
+          const { offsetWidth, offsetHeight } = previewRef.current;
+          setPreviewDimensions({
+            width: offsetWidth,
+            height: offsetHeight,
+          });
+        }
+      };
+  
+      handleResize(); // Initial measurement
+      window.addEventListener('resize', handleResize); // Update on window resize
+  
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    }, []);
+  
+    const handleAddWidget = useCallback(
+      (widget: WidgetDefinition) => {
+        addAnimatable(widget);
+      },
+      [addAnimatable]
+    );
+  
+    const handleUpdateProp = useCallback(
+      (key: string, value: any) => {
+        if (!selectedAnimatable) return;
+    
+        // Fetch widget's current dimensions (default to 0 if not defined)
+        const widgetWidth = selectedAnimatable.props.width?.value || 0;
+        const widgetHeight = selectedAnimatable.props.height?.value || 0;
+    
+        let clampedValue = value;
+    
+        // Apply clamping only for `x` and `y`
+        if (key === 'x') {
+          clampedValue = Math.max(
+            0,
+            Math.min(value, previewDimensions.width - widgetWidth)
+          );
+        } else if (key === 'y') {
+          clampedValue = Math.max(
+            0,
+            Math.min(value, previewDimensions.height - widgetHeight)
+          );
+        }
+    
+        // Update props
+        const updatedProps = {
+          ...selectedAnimatable.props,
+          [key]: {
+            ...selectedAnimatable.props[key],
+            value: clampedValue, // Use clamped value here
+          },
+        };
+    
+        updateAnimatable({ props: updatedProps });
+      },
+      [selectedAnimatable, updateAnimatable, previewDimensions]
+    );
+    
+    
+  
+    const handleCreateKeyframe = useCallback(
+      (props: Record<string, any>) => {
+        if (!animation || !selectedAnimatableId) return;
+  
+        addKeyframe(player.currentTime, props);
+      },
+      [animation, selectedAnimatableId, player.currentTime, addKeyframe]
+    );
+  
+    return (
+      <div className="h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))]" />
+        
+        <div className="relative h-full flex flex-col px-4">
+          <div className="flex-none py-4">
+            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 via-blue-100 to-gray-200">
+              Animation Editor
+            </h1>
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-blue-500/50 to-transparent mt-1" />
+          </div>
+  
+          <div className="flex-1 flex space-x-4 min-h-0">
+            <div className="w-1/5 flex flex-col group">
+              <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
+                <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-gray-900/50 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/50">
+                  <div className="p-4">
+                    <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
+                      Widgets
+                    </h2>
+                    <div className="space-y-2">
+                      {widgetRegistry.map((widget) => (
+                        <div
+                          key={widget.id}
+                          className="p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-600/50 border border-gray-600/50 hover:border-gray-500/50 transition-all duration-200"
+                          onClick={() => handleAddWidget(widget)}
+                        >
+                          <span className="text-gray-200">{widget.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+  
+            <div className="w-1/2 flex flex-col group">
+              <div
+                className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden"
+                ref={previewRef} // Attach ref to the Preview Panel
+              >
+                <div className="p-4 h-full flex flex-col">
+                  <h2 className="flex-none text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
+                    Preview
                   </h2>
-                  <div className="space-y-2">
-                    {widgetRegistry.map((widget) => (
-                      <div
-                        key={widget.id}
-                        className="p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-600/50 border border-gray-600/50 hover:border-gray-500/50 transition-all duration-200"
-                        onClick={() => handleAddWidget(widget)}
-                      >
-                        <span className="text-gray-200">{widget.name}</span>
-                      </div>
+                  <div className="flex-1 relative bg-gray-900/50 rounded-lg border border-gray-700/50 min-h-0">
+                    {animation?.animatables.map((animatable) => (
+                     <BaseAnimatableComponent
+                     key={animatable.id}
+                     animatable={animatable}
+                     selected={animatable.id === selectedAnimatableId}
+                     onSelect={() => setSelectedAnimatableId(animatable.id)}
+                     containerWidth={previewDimensions.width}
+                     containerHeight={previewDimensions.height}
+                     onUpdateProp={handleUpdateProp}
+                   />
                     ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+  
+            <div className="w-1/4 flex flex-col group">
+              <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
+                <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-gray-900/50 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/50">
+                  <div className="p-4">
+                    <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
+                      Properties
+                    </h2>
+                    {selectedAnimatable && (
+                      <PropertiesPanel
+                        animatable={selectedAnimatable}
+                        currentTime={player.currentTime}
+                        onCreateKeyframe={handleCreateKeyframe}
+                        onUpdateProp={handleUpdateProp}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
             </div>
           </div>
   
-          {/* Preview Panel */}
-          <div className="w-1/2 flex flex-col group">
-            <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
-              <div className="p-4 h-full flex flex-col">
-                <h2 className="flex-none text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
-                  Preview
-                </h2>
-                <div className="flex-1 relative bg-gray-900/50 rounded-lg border border-gray-700/50 min-h-0">
-                  {animation?.animatables.map((animatable) => (
-                    <BaseAnimatableComponent
-                      key={animatable.id}
-                      animatable={animatable}
-                      selected={animatable.id === selectedAnimatableId}
-                      onSelect={() => setSelectedAnimatableId(animatable.id)}
-                    />
-                  ))}
-                </div>
-              </div>
+          <div className="flex-none h-96 mt-4 group">
+            <div className="h-full relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm">
+              <TimelinePanel
+                animation={animation}
+                currentTime={player.currentTime}
+                isPlaying={player.isPlaying}
+                onSeek={player.seekTo}
+                onPlay={player.play}
+                onPause={player.pause}
+                onStop={player.stop}
+                selectedAnimatableId={selectedAnimatableId}
+              />
             </div>
-          </div>
-  
-          {/* Properties Panel */}
-          <div className="w-1/4 flex flex-col group">
-            <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
-              <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-gray-900/50 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/50">
-                <div className="p-4">
-                  <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
-                    Properties
-                  </h2>
-                  {selectedAnimatable && (
-                    <PropertiesPanel
-                      animatable={selectedAnimatable}
-                      currentTime={player.currentTime}
-                      onCreateKeyframe={handleCreateKeyframe}
-                      onUpdateProp={handleUpdateProp}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-  
-        {/* Timeline Panel */}
-        <div className="flex-none h-96 mt-4 group">
-          <div className="h-full relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm">
-            <TimelinePanel
-              animation={animation}
-              currentTime={player.currentTime}
-              isPlaying={player.isPlaying}
-              onSeek={player.seekTo}
-              onPlay={player.play}
-              onPause={player.pause}
-              onStop={player.stop}
-              selectedAnimatableId={selectedAnimatableId}
-            />
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-export default AnimationEditor;
+    );
+  };
+  
+  export default AnimationEditor;
