@@ -15,8 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@pulseboard/shared": ["libs/shared/src/index.ts"],
-      "@pulseboard/widgets": ["libs/shared/widgets/src/index.ts"]
+      "@pulseboard/common": ["libs/common/src/index.ts"],
     }
   },
   "exclude": ["node_modules", "tmp"]
