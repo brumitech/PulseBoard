@@ -272,53 +272,53 @@ const AnimationEditor = () => {
   );
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))]" />
       
       {/* Main content */}
-      <div className="relative h-full flex flex-col p-4 space-y-4">
+      <div className="relative h-full flex flex-col px-4">
         {/* Header */}
-        <div className="relative">
+        <div className="flex-none py-4">
           <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 via-blue-100 to-gray-200">
             Animation Editor
           </h1>
           <div className="h-px w-full bg-gradient-to-r from-transparent via-blue-500/50 to-transparent mt-1" />
         </div>
-
+  
         {/* Upper section */}
-        <div className="flex-1 flex space-x-4">
+        <div className="flex-1 flex space-x-4 min-h-0">
           {/* Widgets Panel */}
-          <div className="w-1/5 group relative">
-            <div className="absolute -inset-0.5 rounded-lg opacity-0 group-hover:opacity-30 transition-all duration-500 blur-xl bg-gradient-to-r from-blue-500/50 via-cyan-500/50 to-blue-500/50" />
-            <div className="relative h-full bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-y-auto">
-              <div className="p-4">
-                <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
-                  Widgets
-                </h2>
-                <div className="space-y-2">
-                  {widgetRegistry.map((widget) => (
-                    <div
-                      key={widget.id}
-                      className="p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-600/50 border border-gray-600/50 hover:border-gray-500/50 transition-all duration-200"
-                      onClick={() => handleAddWidget(widget)}
-                    >
-                      <span className="text-gray-200">{widget.name}</span>
-                    </div>
-                  ))}
+          <div className="w-1/5 flex flex-col group">
+            <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
+              <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-gray-900/50 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/50">
+                <div className="p-4">
+                  <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
+                    Widgets
+                  </h2>
+                  <div className="space-y-2">
+                    {widgetRegistry.map((widget) => (
+                      <div
+                        key={widget.id}
+                        className="p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-600/50 border border-gray-600/50 hover:border-gray-500/50 transition-all duration-200"
+                        onClick={() => handleAddWidget(widget)}
+                      >
+                        <span className="text-gray-200">{widget.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
+  
           {/* Preview Panel */}
-          <div className="w-1/2 group relative">
-            <div className="absolute -inset-0.5 rounded-lg opacity-0 group-hover:opacity-30 transition-all duration-500 blur-xl bg-gradient-to-r from-blue-500/50 via-cyan-500/50 to-blue-500/50" />
-            <div className="relative h-full bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm">
-              <div className="p-4">
-                <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
+          <div className="w-1/2 flex flex-col group">
+            <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
+              <div className="p-4 h-full flex flex-col">
+                <h2 className="flex-none text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
                   Preview
                 </h2>
-                <div className="relative w-full h-[calc(100%-2rem)] bg-gray-900/50 rounded-lg border border-gray-700/50">
+                <div className="flex-1 relative bg-gray-900/50 rounded-lg border border-gray-700/50 min-h-0">
                   {animation?.animatables.map((animatable) => (
                     <BaseAnimatableComponent
                       key={animatable.id}
@@ -331,32 +331,32 @@ const AnimationEditor = () => {
               </div>
             </div>
           </div>
-
+  
           {/* Properties Panel */}
-          <div className="w-1/4 group relative">
-            <div className="absolute -inset-0.5 rounded-lg opacity-0 group-hover:opacity-30 transition-all duration-500 blur-xl bg-gradient-to-r from-blue-500/50 via-cyan-500/50 to-blue-500/50" />
-            <div className="relative h-full bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-y-auto">
-              <div className="p-4">
-                <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
-                  Properties
-                </h2>
-                {selectedAnimatable && (
-                  <PropertiesPanel
-                    animatable={selectedAnimatable}
-                    currentTime={player.currentTime}
-                    onCreateKeyframe={handleCreateKeyframe}
-                    onUpdateProp={handleUpdateProp}
-                  />
-                )}
+          <div className="w-1/4 flex flex-col group">
+            <div className="flex-1 relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm overflow-hidden">
+              <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-gray-900/50 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/50">
+                <div className="p-4">
+                  <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 mb-4">
+                    Properties
+                  </h2>
+                  {selectedAnimatable && (
+                    <PropertiesPanel
+                      animatable={selectedAnimatable}
+                      currentTime={player.currentTime}
+                      onCreateKeyframe={handleCreateKeyframe}
+                      onUpdateProp={handleUpdateProp}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
-
+  
         {/* Timeline Panel */}
-        <div className="h-64 group relative">
-          <div className="absolute -inset-0.5 rounded-lg opacity-0 group-hover:opacity-30 transition-all duration-500 blur-xl bg-gradient-to-r from-blue-500/50 via-cyan-500/50 to-blue-500/50" />
-          <div className="relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm">
+        <div className="flex-none h-96 mt-4 group">
+          <div className="h-full relative bg-gradient-to-r from-gray-800/95 to-gray-800/90 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all duration-300 backdrop-blur-sm">
             <TimelinePanel
               animation={animation}
               currentTime={player.currentTime}
