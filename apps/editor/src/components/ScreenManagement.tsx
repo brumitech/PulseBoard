@@ -1,39 +1,40 @@
-import React, { useState, useRef } from 'react';
-import {
-  MapPin,
-  Signal,
-  Clock,
-  Loader2,
-  RefreshCw,
-  ChevronRight,
-  ChevronLeft,
-} from 'lucide-react';
+import { useState, useRef } from 'react';
+import { RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useScreens } from '@pulseboard/shared';
 import { screenApi } from '@pulseboard/shared';
 import { ScreenMap } from './ScreenMap';
+import {
+  Loading,
+  ErrorState,
+  ScreenListItem,
+} from '../components/screen-management/list';
+import type { ExtendedScreen } from '../components/screen-management/map/types';
+import { MapControllerRef } from '../components/screen-management/map/types';
 
 export default function ScreenManagement() {
   const { screens, loading, error, filterScreens, refreshScreens } =
     useScreens();
   const [isListExpanded, setIsListExpanded] = useState(false);
-  const [selectedScreenId, setSelectedScreenId] = useState(null);
-  const mapRef = useRef(null);
+  const [selectedScreenId, setSelectedScreenId] = useState<string | null>(null);
+  const mapRef = useRef<MapControllerRef>(null);
 
-  const formatDate = (date) =>
+  const formatDate = (date?: string) =>
     !date ? 'Never' : new Date(date).toLocaleString();
 
-  const handleScreenSelect = (screenId) => {
+  const handleScreenSelect = (screenId: string) => {
     setSelectedScreenId(screenId);
     const screen = screens.find((s) => s.id === screenId);
     if (screen && mapRef.current?.flyTo) {
       mapRef.current.flyTo([screen.latitude, screen.longitude], 16, {
-        duration: 1.5,
-        easeLinearity: 0.25,
+        duration: 2,
+        easeLinearity: 0.15,
+        animate: true,
+        noMoveStart: false,
       });
     }
   };
 
-  const handleToggleStatus = async (id) => {
+  const handleToggleStatus = async (id: string) => {
     try {
       await screenApi.toggleStatus(id);
       refreshScreens();
@@ -42,7 +43,7 @@ export default function ScreenManagement() {
     }
   };
 
-  const handleAssignAnimation = async (id) => {
+  const handleAssignAnimation = async (id: string) => {
     const animationId = prompt('Enter Animation ID:');
     if (!animationId) return;
     try {
@@ -53,7 +54,10 @@ export default function ScreenManagement() {
     }
   };
 
-  const handleAddScreen = async (location) => {
+  const handleAddScreen = async (location: {
+    latitude: number;
+    longitude: number;
+  }) => {
     try {
       await screenApi.createScreen(location);
       refreshScreens();
@@ -63,34 +67,11 @@ export default function ScreenManagement() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-          <p className="text-gray-400 text-sm">Loading screens...</p>
-        </div>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-6">
-        <div className="flex flex-col items-center space-y-4 max-w-md text-center">
-          <div className="p-3 bg-red-500/10 rounded-full">
-            <RefreshCw className="h-8 w-8 text-red-400" />
-          </div>
-          <p className="text-red-400">Error loading screens: {error.message}</p>
-          <button
-            onClick={refreshScreens}
-            className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-gray-200 flex items-center space-x-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Retry</span>
-          </button>
-        </div>
-      </div>
-    );
+    return <ErrorState error={error} onRetry={refreshScreens} />;
   }
 
   return (
@@ -117,7 +98,9 @@ export default function ScreenManagement() {
 
             <select
               className="bg-gray-800/50 text-gray-300 rounded-lg border border-gray-700 px-3 py-1 text-sm backdrop-blur-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
-              onChange={(e) => filterScreens(e.target.value)}
+              onChange={(e) =>
+                filterScreens(e.target.value as 'all' | 'active' | 'inactive')
+              }
             >
               <option value="all">All Screens</option>
               <option value="active">Active</option>
@@ -138,7 +121,7 @@ export default function ScreenManagement() {
           <div className="h-full">
             <ScreenMap
               ref={mapRef}
-              screens={screens}
+              screens={screens as ExtendedScreen[]}
               onAddScreen={handleAddScreen}
               onToggleStatus={handleToggleStatus}
               onAssignAnimation={handleAssignAnimation}
@@ -182,65 +165,13 @@ export default function ScreenManagement() {
           <div className="h-[calc(100%-5rem)] overflow-auto">
             <div className="divide-y divide-gray-800">
               {screens.map((screen) => (
-                <div
+                <ScreenListItem
                   key={screen.id}
-                  onClick={() => handleScreenSelect(screen.id)}
-                  className={`p-4 hover:bg-gray-800/50 cursor-pointer transition-colors ${
-                    selectedScreenId === screen.id
-                      ? 'bg-gray-800/50 border-l-2 border-blue-500'
-                      : ''
-                  }`}
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            screen.status === 'active'
-                              ? 'bg-emerald-500 animate-pulse'
-                              : 'bg-gray-600'
-                          }`}
-                        />
-                        <span className="text-sm font-medium text-gray-200">
-                          Screen {screen.id}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            screen.status === 'active'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-gray-800 text-gray-400 border border-gray-700'
-                          }`}
-                        >
-                          {screen.status}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2">
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="h-3 w-3 text-blue-400" />
-                        <span className="text-xs text-gray-400">
-                          {screen.latitude.toFixed(4)},{' '}
-                          {screen.longitude.toFixed(4)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Signal className="h-3 w-3 text-purple-400" />
-                        <span className="text-xs text-gray-400">
-                          {screen.animationId || 'No animation'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-3 w-3 text-amber-400" />
-                        <span className="text-xs text-gray-400">
-                          {formatDate(screen.lastPing)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  screen={screen as ExtendedScreen}
+                  isSelected={selectedScreenId === screen.id}
+                  onSelect={handleScreenSelect}
+                  formatDate={formatDate}
+                />
               ))}
             </div>
           </div>
