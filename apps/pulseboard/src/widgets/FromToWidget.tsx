@@ -8,61 +8,73 @@ interface SensorData {
   stamp: string;
 }
 
-// Interface for average data
-interface AverageData {
-  averageValue: number;
-  count: number;
-  measurementType: string;
-  startDate: string;
-  endDate: string;
-}
-
-// Function to fetch data for custom date range
+// Function to fetch data for custom date range with chunking
 export const fetchCustomRangeSensorData = async (
   fromDate: Date, 
   toDate: Date, 
   valueType: string = 'pm10'
-): Promise<AverageData | null> => {
+): Promise<SensorData[] | null> => {
   const sensorId = '1004';
 
   const formatDate = (date: Date) => {
     return date.toISOString().replace('Z', '%2b01:00');
   };
 
+  // Function to chunk date range into weekly segments
+  const getDateChunks = (start: Date, end: Date): { from: Date, to: Date }[] => {
+    const chunks: { from: Date, to: Date }[] = [];
+    let currentStart = new Date(start);
+
+    while (currentStart < end) {
+      const currentEnd = new Date(currentStart);
+      currentEnd.setDate(currentStart.getDate() + 7);
+      
+      // Ensure we don't go beyond the original end date
+      if (currentEnd > end) {
+        currentEnd.setTime(end.getTime());
+      }
+
+      chunks.push({ from: new Date(currentStart), to: currentEnd });
+      currentStart.setDate(currentStart.getDate() + 7);
+    }
+
+    return chunks;
+  };
+
   try {
     const username = 'brumtech';
     const password = 'brumibrumi123';
-    
-    const response = await fetch(
-      `https://skopje.pulse.eco/rest/dataRaw?sensorId=${sensorId}&from=${formatDate(fromDate)}&to=${formatDate(toDate)}&type=${valueType}`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
-          'Accept': 'application/json'
-        }
-      }
-    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Split the date range into weekly chunks
+    const dateChunks = getDateChunks(fromDate, toDate);
+    
+    // Fetch data for each chunk
+    const allMeasurements: SensorData[] = [];
+
+    for (const chunk of dateChunks) {
+      const response = await fetch(
+        `https://skopje.pulse.eco/rest/dataRaw?sensorId=${sensorId}&from=${formatDate(chunk.from)}&to=${formatDate(chunk.to)}&type=${valueType}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: SensorData[] = await response.json();
+      allMeasurements.push(...data);
     }
 
-    const data: SensorData[] = await response.json();
+    if (allMeasurements.length === 0) return null;
 
-    if (data.length === 0) return null;
-
-    // Calculate average
-    const total = data.reduce((sum, item) => sum + parseFloat(item.value), 0);
-    const averageValue = Number((total / data.length).toFixed(2));
-
-    return {
-      averageValue,
-      count: data.length,
-      measurementType: valueType,
-      startDate: fromDate.toISOString(),
-      endDate: toDate.toISOString()
-    };
+    // Sort measurements by timestamp
+    return allMeasurements.sort((a, b) => new Date(a.stamp).getTime() - new Date(b.stamp).getTime());
   } catch (error) {
     console.error('Failed to fetch custom range sensor data:', error);
     return null;
@@ -80,7 +92,7 @@ export const FromToDataWidget: React.FC = () => {
     return new Date().toISOString().split('T')[0];
   });
   const [valueType, setValueType] = useState<string>('pm10');
-  const [averageData, setAverageData] = useState<AverageData | null>(null);
+  const [measurements, setMeasurements] = useState<SensorData[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -98,10 +110,20 @@ export const FromToDataWidget: React.FC = () => {
         return;
       }
 
+      // Check date range limit
+      const monthsDifference = (to.getFullYear() - from.getFullYear()) * 12 + 
+                                (to.getMonth() - from.getMonth());
+      
+      if (Math.abs(monthsDifference) > 3) {
+        setError('Please select a date range within 3 months');
+        setIsLoading(false);
+        return;
+      }
+
       const data = await fetchCustomRangeSensorData(from, to, valueType);
       
       if (data) {
-        setAverageData(data);
+        setMeasurements(data);
         setError(null);
       } else {
         setError('No data available for selected range');
@@ -127,7 +149,7 @@ export const FromToDataWidget: React.FC = () => {
 
   return (
     <div style={{
-      width: '300px',
+      width: '400px',
       padding: '16px',
       borderRadius: '12px',
       backgroundColor: '#f0f0f0',
@@ -189,43 +211,43 @@ export const FromToDataWidget: React.FC = () => {
         <p style={{color: 'red', textAlign: 'center'}}>{error}</p>
       )}
 
-      {averageData && (
-        <div>
-          <div 
-            style={{
-              backgroundColor: getValueColor(averageData.averageValue),
-              borderRadius: '50%',
-              width: '120px',
-              height: '120px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              margin: '0 auto',
-              marginBottom: '10px'
-            }}
-          >
-            <span style={{fontSize: '28px', fontWeight: 'bold'}}>
-              {averageData.averageValue}
-            </span>
-            <span style={{fontSize: '14px'}}>
-              {averageData.measurementType === 'pm10' || averageData.measurementType === 'pm25' 
-                ? 'µg/m³' 
-                : averageData.measurementType === 'temperature' 
-                ? '°C' 
-                : '%'}
-            </span>
-          </div>
-          
-          <div style={{ textAlign: 'center' }}>
-            <p><strong>Measurement Type:</strong> {averageData.measurementType.toUpperCase()}</p>
-            <p><strong>Samples:</strong> {averageData.count}</p>
-            <p>
-              <strong>Date Range:</strong> 
-              {new Date(averageData.startDate).toLocaleDateString()} - 
-              {new Date(averageData.endDate).toLocaleDateString()}
-            </p>
-          </div>
+      {measurements && (
+        <div style={{ 
+          maxHeight: '400px', 
+          overflowY: 'auto', 
+          border: '1px solid #ccc', 
+          borderRadius: '8px',
+          padding: '10px'
+        }}>
+          <h3>Measurements ({measurements.length} total)</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#e0e0e0' }}>
+                <th style={{ padding: '8px', border: '1px solid #ccc' }}>Timestamp</th>
+                <th style={{ padding: '8px', border: '1px solid #ccc' }}>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {measurements.map((measurement, index) => (
+                <tr key={index} style={{ 
+                  backgroundColor: index % 2 === 0 ? '#f9f9f9' : 'white',
+                  color: getValueColor(parseFloat(measurement.value.toString()))
+                }}>
+                  <td style={{ padding: '8px', border: '1px solid #ccc' }}>
+                    {new Date(measurement.stamp).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '8px', border: '1px solid #ccc', fontWeight: 'bold' }}>
+                    {measurement.value}
+                    {valueType === 'pm10' || valueType === 'pm25' 
+                      ? ' µg/m³' 
+                      : valueType === 'temperature' 
+                      ? ' °C' 
+                      : ' %'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
