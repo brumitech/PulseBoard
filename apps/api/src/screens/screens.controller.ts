@@ -7,6 +7,8 @@ import {
   Body,
   Param,
   NotFoundException,
+  Query,
+  Patch,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ScreensService } from './screens.service';
@@ -43,6 +45,14 @@ export class ScreensController {
     return screen;
   }
 
+  @Patch(':id/toggle-status')
+  @ApiOperation({ summary: 'Toggle screen status (active/inactive)' })
+  @ApiResponse({ status: 200, description: 'Status toggled successfully' })
+  @ApiResponse({ status: 404, description: 'Screen not found' })
+  async toggleStatus(@Param('id') id: string) {
+    return this.screensService.toggleStatus(id);
+  }
+
   @Put(':id')
   @ApiOperation({ summary: 'Update a screen' })
   @ApiResponse({ status: 200, description: 'Screen updated successfully' })
@@ -52,6 +62,37 @@ export class ScreensController {
     @Body() updateScreenDto: UpdateScreenDto
   ) {
     const screen = await this.screensService.update(id, updateScreenDto);
+    if (!screen) {
+      throw new NotFoundException('Screen not found');
+    }
+    return screen;
+  }
+
+  @Get('bounds')
+  @ApiOperation({ summary: 'Get screens within map bounds' })
+  async findWithinBounds(
+    @Query('latMin') latMin: number,
+    @Query('latMax') latMax: number,
+    @Query('lngMin') lngMin: number,
+    @Query('lngMax') lngMax: number
+  ) {
+    return this.screensService.findWithinBounds({
+      latMin,
+      latMax,
+      lngMin,
+      lngMax,
+    });
+  }
+
+  @Patch(':id/assign-animation')
+  @ApiOperation({ summary: 'Assign an animation to a screen' })
+  @ApiResponse({ status: 200, description: 'Animation assigned successfully' })
+  @ApiResponse({ status: 404, description: 'Screen not found' })
+  async assignAnimation(
+    @Param('id') id: string,
+    @Body('animationId') animationId: string
+  ) {
+    const screen = await this.screensService.assignAnimation(id, animationId);
     if (!screen) {
       throw new NotFoundException('Screen not found');
     }

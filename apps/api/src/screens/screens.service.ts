@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Screen } from '../schemas/screen.schema';
@@ -24,6 +24,21 @@ export class ScreensService {
     return this.screenModel.find().exec();
   }
 
+  async findWithinBounds(bounds: {
+    latMin: number;
+    latMax: number;
+    lngMin: number;
+    lngMax: number;
+  }): Promise<Screen[]> {
+    const { latMin, latMax, lngMin, lngMax } = bounds;
+    return this.screenModel
+      .find({
+        latitude: { $gte: latMin, $lte: latMax },
+        longitude: { $gte: lngMin, $lte: lngMax },
+      })
+      .exec();
+  }
+
   async findOne(id: string): Promise<Screen> {
     return this.screenModel.findOne({ id }).exec();
   }
@@ -31,6 +46,27 @@ export class ScreensService {
   async update(id: string, updateScreenDto: UpdateScreenDto): Promise<Screen> {
     return this.screenModel
       .findOneAndUpdate({ id }, updateScreenDto, { new: true })
+      .exec();
+  }
+
+  async toggleStatus(id: string): Promise<Screen> {
+    const screen = await this.findOne(id);
+    if (!screen) {
+      throw new NotFoundException('Screen not found');
+    }
+
+    const newStatus = screen.status === 'active' ? 'inactive' : 'active';
+    return this.screenModel
+      .findOneAndUpdate({ id }, { status: newStatus }, { new: true })
+      .exec();
+  }
+
+  async assignAnimation(
+    screenId: string,
+    animationId: string
+  ): Promise<Screen> {
+    return this.screenModel
+      .findOneAndUpdate({ id: screenId }, { animationId }, { new: true })
       .exec();
   }
 

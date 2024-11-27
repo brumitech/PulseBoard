@@ -1,11 +1,10 @@
-import AnimationEditor from "../components/AnimationEditor";
-
-
+import AnimationEditor from '../components/AnimationEditor';
+import ScreenManagement from '../components/ScreenManagement';
 
 export function App() {
-
   return (
-    <AnimationEditor/>    
+    // <AnimationEditor/>
+    <ScreenManagement />
   );
 }
 
