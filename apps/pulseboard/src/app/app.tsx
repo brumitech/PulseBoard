@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CurrentDataWidget } from '../widgets/CurrentDataWidget'
-import { ADW } from '../widgets/AverageDataWidget';
+import { AverageDataWidget } from '../widgets/AverageDataWidget';
+import { FromToDataWidget } from '../widgets/FromToWidget'
 
 
 
@@ -9,7 +10,8 @@ export const App: React.FC = () => {
     <div>
       <h1>My Dashboard</h1>
       <CurrentDataWidget />
-      <ADW />
+      <AverageDataWidget />
+      <FromToDataWidget />
       {/* Other components */}
     </div>
   );
